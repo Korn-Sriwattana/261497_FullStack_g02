@@ -1,0 +1,59 @@
+tunnel: TUNNEL_LONG_NAME
+credentials-file: /home/nirand/.cloudflared/TUNNEL_LONG_NAME.json
+
+ingress:
+  - hostname: fs-nr.iecmu.com
+    service: http://localhost:5173
+  - hostname: fs-webhook.iecmu.com
+    service: http://localhost:9000
+  - hostname: fs-g01.iecmu.com
+    service: http://localhost:6001
+  - hostname: fs-g02.iecmu.com
+    service: http://localhost:6002
+  - hostname: fs-g03.iecmu.com
+    service: http://localhost:6003
+  - hostname: fs-g04.iecmu.com
+    service: http://localhost:6004
+  - hostname: fs-g05.iecmu.com
+    service: http://localhost:6005
+  - hostname: fs-g06.iecmu.com
+    service: http://localhost:6006
+  - hostname: fs-g07.iecmu.com
+    service: http://localhost:6007
+  - hostname: fs-g08.iecmu.com
+    service: http://localhost:6008
+  - hostname: fs-g09.iecmu.com
+    service: http://localhost:6009
+  - hostname: fs-g10.iecmu.com
+    service: http://localhost:6010
+  - hostname: fs-g11.iecmu.com
+    service: http://localhost:6011
+  - hostname: fs-g12.iecmu.com
+    service: http://localhost:6012
+  - hostname: fs-g13.iecmu.com
+    service: http://localhost:6013
+  - hostname: fs-g14.iecmu.com
+    service: http://localhost:6014
+  - hostname: fs-g15.iecmu.com
+    service: http://localhost:6015
+  - hostname: fs-g16.iecmu.com
+    service: http://localhost:6016
+  - hostname: fs-g17.iecmu.com
+    service: http://localhost:6017
+  - hostname: fs-g18.iecmu.com
+    service: http://localhost:6018
+  - hostname: fs-19.iecmu.com
+    service: http://localhost:6019
+  - hostname: fs-g20.iecmu.com
+    service: http://localhost:6020
+  - hostname: fs-g21.iecmu.com
+    service: http://localhost:6021
+  - hostname: fs-g22.iecmu.com
+    service: http://localhost:6022
+  - hostname: fs-g23.iecmu.com
+    service: http://localhost:6023
+  - hostname: fs-g24.iecmu.com
+    service: http://localhost:6024
+  - hostname: fs-g25.iecmu.com
+    service: http://localhost:6025
+  - service: http_status:404

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "redeploy",
+    "execute-command": "/etc/webhook/redeploy.sh",
+    "command-working-directory": "/etc/webhook",
+    "pass-arguments-to-command":
+    [
+      {
+        "source": "payload",
+        "name": "data.project_group"
+      },
+      {
+	"source": "payload",
+	"name": "data.discord_webhook"
+      },
+      {
+	"source": "payload",
+	"name": "data.webhook_secret"
+      }
+    ]
+  },
+  {
+    "id": "test",
+    "execute-command": "/etc/webhook/test.sh",
+    "command-working-directory": "/etc/webhook",
+    "pass-arguments-to-command":
+    [
+      {
+        "source": "payload",
+        "name": "data.project_group"
+      },
+      {
+	"source": "payload",
+	"name": "data.discord_webhook"
+      },
+      {
+	"source": "payload",
+	"name": "data.webhook_secret"
+      }
+    ]
+  }
+]
