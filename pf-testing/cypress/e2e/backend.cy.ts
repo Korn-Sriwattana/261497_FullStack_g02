@@ -6,6 +6,12 @@ before(() => {
   });
 });
 
+beforeEach(() => {
+  const url = Cypress.env("BACKEND_URL");
+  cy.request("POST", `${url}/todo/all`);
+  cy.request("POST", `${url}/tags/unused`);
+});
+
 describe("Backend", () => {
   it("checks env", () => {
     cy.log(JSON.stringify(Cypress.env()));
@@ -43,7 +49,7 @@ describe("Backend", () => {
     }).then((res) => {
       cy.log(JSON.stringify(res.body));
       expect(res.body).to.have.all.keys("msg", "data");
-      expect(res.body.data).to.all.keys("id", "todoText");
+      expect(res.body.data).to.include.all.keys("id", "todoText");
     });
   });
 
@@ -101,6 +107,155 @@ describe("Backend", () => {
           const todos = res.body;
           const todo = todos.find((el: any) => el.id === currentId);
           expect(todo.todoText).to.equal("Updated Text");
+        });
+      });
+    });
+  });
+
+  it("creates tag", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const uniqueName = "TestTag1_" + Date.now();
+    cy.request({
+      method: "POST",
+      url: `${url}/tags`,
+      body: { name: uniqueName },
+    }).then((res) => {
+      expect(res.body).to.have.all.keys("msg", "data");
+      expect(res.body.data).to.include.all.keys("id", "name");
+      expect(res.body.data.name).to.equal(uniqueName);
+    });
+  });
+
+  
+  it("gets tag list", () => {
+    const url = Cypress.env("BACKEND_URL");
+    cy.request(`${url}/tags`).then((res) => {
+      expect(res.status).to.eq(200);
+      expect(res.body).to.be.an("array");
+    });
+  });
+
+
+  it("deletes tag", () => {
+    const url = Cypress.env("BACKEND_URL");
+    cy.request({
+      method: "POST",
+      url: `${url}/tags`,
+      body: { name: `TempTag_${Date.now()}` }, // ให้ชื่อ tag เป็นเอกลักษณ์ป้องกันซ้ำ
+    }).then((res) => {
+      const tagId = res.body.data.id;
+      cy.request({
+        method: "DELETE",
+        url: `${url}/tags/${tagId}`, // ลบด้วย tagId
+      }).then((res) => {
+        expect(res.body).to.have.all.keys("msg", "data"); // เช็ค response structure
+        expect(res.body.data.id).to.equal(tagId);
+      });
+    });
+  });
+
+
+  it("creates todo with tag", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const uniqueTagName = `TestTag2_${Date.now()}`;
+
+    cy.request({
+      method: "POST",
+      url: `${url}/tags`,
+      body: { name: uniqueTagName },
+    }).then((res) => {
+      const tagId = res.body.data.id;
+
+      cy.request({
+        method: "PUT",
+        url: `${url}/todo`,
+        body: {
+          todoText: "Todo with Tag",
+          tagId,
+        },
+      }).then((res) => {
+        expect(res.body).to.have.all.keys("msg", "data");
+        expect(res.body.data).to.include.all.keys("id", "todoText", "tagId");
+        expect(res.body.data.tagId).to.equal(tagId);
+      });
+    });
+  });
+
+  it("filters todos by tagId", () => {
+    const url = Cypress.env("BACKEND_URL");
+    cy.request({
+      method: "POST",
+      url: `${url}/tags`,
+      body: { name: `FilterTag_${Date.now()}` },
+    }).then(({ body }) => {
+      const tagId = body.data.id;
+      cy.request({
+        method: "PUT",
+        url: `${url}/todo`,
+        body: {
+          todoText: "Filtered todo",
+          tagId,
+        },
+      }).then(() => {
+        cy.request({
+          method: "GET",
+          url: `${url}/todo`,
+          qs: { tagId },
+        }).then(({ body: todos }) => {
+          expect(todos).to.be.an("array").that.is.not.empty;
+          todos.forEach((todo: any) => {
+            expect(todo.tagId).to.eq(tagId);
+          });
+        });
+      });
+    });
+  });
+
+  it("deletes a tag if no todos use it", () => {
+    const url = Cypress.env("BACKEND_URL");
+
+    cy.request({
+      method: "POST",
+      url: `${url}/tags`,
+      body: { name: "TempDeleteTag" },
+    }).then((tagRes) => {
+      const tagId = tagRes.body.data.id;
+
+      cy.request({
+        method: "DELETE",
+        url: `${url}/tags/${tagId}`,
+      }).then((delRes) => {
+        expect(delRes.status).to.eq(200);
+        expect(delRes.body.data.id).to.eq(tagId);
+      });
+    });
+  });
+
+  it("fails to delete tag if todos use it", () => {
+    const url = Cypress.env("BACKEND_URL");
+
+    cy.request({
+      method: "POST",
+      url: `${url}/tags`,
+      body: { name: "TagUsed" },
+    }).then((tagRes) => {
+      const tagId = tagRes.body.data.id;
+
+      cy.request({
+        method: "PUT",
+        url: `${url}/todo`,
+        body: {
+          todoText: "Todo using tag",
+          tagId,
+        },
+      }).then(() => {
+        cy.request({
+          method: "DELETE",
+          url: `${url}/tags/${tagId}`,
+          failOnStatusCode: false,
+        }).then((res) => {
+          expect(res.status).to.eq(400);
+          expect(res.body).to.have.property("error");
         });
       });
     });
