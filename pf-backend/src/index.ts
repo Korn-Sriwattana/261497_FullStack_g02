@@ -73,17 +73,20 @@ app.get("/todo", async (req, res, next) => {
     const sortBy = req.query.sortBy as string | undefined;
     const tagId = req.query.tagId as string | undefined;
 
-    let query = dbClient.select().from(todoTable);
+    let todos;
 
     if (tagId) {
-      query = query.where(eq(todoTable.tagId, tagId));
+      todos = await dbClient
+        .select()
+        .from(todoTable)
+        .where((t) => eq(t.tagId, tagId))
+        .orderBy(sortBy === "dueDate" ? asc(todoTable.dueDate) : desc(todoTable.createdAt));
+    } else {
+      todos = await dbClient
+        .select()
+        .from(todoTable)
+        .orderBy(sortBy === "dueDate" ? asc(todoTable.dueDate) : desc(todoTable.createdAt));
     }
-
-    const todos = await query.orderBy(
-      sortBy === "dueDate"
-        ? [asc(todoTable.dueDate), isNull(todoTable.dueDate)]
-        : [desc(todoTable.createdAt)]
-    );
 
     res.json(todos);
   } catch (err) {
@@ -94,9 +97,10 @@ app.get("/todo", async (req, res, next) => {
 // Insert
 app.put("/todo", async (req, res, next) => {
   try {
+    console.log("Request Body:", req.body);
     const todoText = req.body.todoText ?? "";
+    const tagId = req.body.tagId ?? null; 
     const dueDate = req.body.dueDate ?? null;
-    const tagId = req.body.tagId ?? null;
 
     if (!todoText) throw new Error("Empty todoText");
 
@@ -104,15 +108,10 @@ app.put("/todo", async (req, res, next) => {
       .insert(todoTable)
       .values({
         todoText,
-        dueDate: dueDate ? new Date(dueDate) : null,
         tagId,
+        dueDate: dueDate ? new Date(dueDate) : null, 
       })
-      .returning({
-        id: todoTable.id,
-        todoText: todoTable.todoText,
-        dueDate: todoTable.dueDate,
-        tagId: todoTable.tagId,
-      });
+      .returning({ id: todoTable.id, todoText: todoTable.todoText, tagId: todoTable.tagId, dueDate: todoTable.dueDate });
 
     res.json({ msg: `Insert successfully`, data: result[0] });
   } catch (err) {
@@ -126,7 +125,7 @@ app.patch("/todo", async (req, res, next) => {
     const id = req.body.id ?? "";
     const todoText = req.body.todoText ?? "";
     const dueDate = req.body.dueDate ?? null;
-    const tagId = req.body.tagId ?? null; // รับ tagId หรือ null
+    const tagId = req.body.tagId ?? null;
 
     if (!todoText || !id) throw new Error("Empty todoText or id");
 
@@ -157,6 +156,7 @@ app.patch("/todo", async (req, res, next) => {
     next(err);
   }
 });
+
 
 // Delete
 app.delete("/todo", async (req, res, next) => {
