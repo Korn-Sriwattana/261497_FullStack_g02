@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { dbClient } from "@db/client.js";
-import { todoTable } from "@db/schema.js";
+import { todoTable, tagTable } from "@db/schema.js";
 import cors from "cors";
 import Debug from "debug";
 import { eq } from "drizzle-orm";
@@ -26,26 +26,84 @@ app.use(
 app.use(express.json());
 
 // Query
-app.get("/todo", async (req, res, next) => {
+// app.get("/todo", async (req, res, next) => {
+//   try {
+//     const results = await dbClient.query.todoTable.findMany();
+//     res.json(results);
+//   } catch (err) {
+//     next(err);
+//   }
+// });
+
+app.get("/tags", async (req, res, next) => {
   try {
-    const results = await dbClient.query.todoTable.findMany();
-    res.json(results);
+    const tags = await dbClient.select().from(tagTable);
+    res.json(tags);
   } catch (err) {
     next(err);
   }
 });
 
+app.post("/tags", async (req, res, next) => {
+  try {
+    const name = req.body.name?.trim();
+    if (!name) throw new Error("Empty tag name");
+
+    // เช็คว่าชื่อ tag ซ้ำหรือเปล่า (ใน tagTable)
+    const existing = await dbClient
+      .select()
+      .from(tagTable)
+      .where(eq(tagTable.name, name));
+
+    if (existing.length > 0) throw new Error("Tag name already exists");
+
+    const result = await dbClient
+      .insert(tagTable)
+      .values({ name })
+      .returning({ id: tagTable.id, name: tagTable.name });
+    res.json({ msg: "Tag added", data: result[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ดึง todo ทั้งหมด หรือ filter ตาม tagId ถ้ามี
+app.get("/todo", async (req, res, next) => {
+  try {
+    const tagId = req.query.tagId as string | undefined;
+
+    let todos;
+    if (tagId) {
+      todos = await dbClient
+        .select()
+        .from(todoTable)
+        .where(eq(todoTable.tagId, tagId));
+    } else {
+      todos = await dbClient.select().from(todoTable);
+    }
+    res.json(todos);
+  } catch (err) {
+    next(err);
+  }
+});
+
+
 // Insert
 app.put("/todo", async (req, res, next) => {
   try {
     const todoText = req.body.todoText ?? "";
+    const tagId = req.body.tagId ?? null; // รับ tagId หรือ null ถ้าไม่มี
+
     if (!todoText) throw new Error("Empty todoText");
+
     const result = await dbClient
       .insert(todoTable)
       .values({
         todoText,
+        tagId,  // เพิ่ม tagId ลงไป
       })
-      .returning({ id: todoTable.id, todoText: todoTable.todoText });
+      .returning({ id: todoTable.id, todoText: todoTable.todoText, tagId: todoTable.tagId });
+
     res.json({ msg: `Insert successfully`, data: result[0] });
   } catch (err) {
     next(err);
@@ -57,6 +115,8 @@ app.patch("/todo", async (req, res, next) => {
   try {
     const id = req.body.id ?? "";
     const todoText = req.body.todoText ?? "";
+    const tagId = req.body.tagId ?? null; // รับ tagId หรือ null
+
     if (!todoText || !id) throw new Error("Empty todoText or id");
 
     // Check for existence if data
@@ -67,9 +127,9 @@ app.patch("/todo", async (req, res, next) => {
 
     const result = await dbClient
       .update(todoTable)
-      .set({ todoText })
+      .set({ todoText, tagId })  // เพิ่ม tagId
       .where(eq(todoTable.id, id))
-      .returning({ id: todoTable.id, todoText: todoTable.todoText });
+      .returning({ id: todoTable.id, todoText: todoTable.todoText, tagId: todoTable.tagId });
     res.json({ msg: `Update successfully`, data: result });
   } catch (err) {
     next(err);
@@ -97,6 +157,35 @@ app.delete("/todo", async (req, res, next) => {
     next(err);
   }
 });
+//ลบ Tag
+app.delete("/tags/:id", function (req, res, next) {
+  (async () => {
+    try {
+      const id = req.params.id;
+
+      if (!id) {
+        return res.status(400).json({ error: "Empty tag id" });
+      }
+
+      const tagExists = await dbClient.select().from(tagTable).where(eq(tagTable.id, id));
+      if (tagExists.length === 0) {
+        return res.status(404).json({ error: "Tag not found" });
+      }
+
+      const todosUsingTag = await dbClient.select().from(todoTable).where(eq(todoTable.tagId, id));
+      if (todosUsingTag.length > 0) {
+        return res.status(400).json({ error: "Cannot delete tag because it is used by some todos" });
+      }
+
+      await dbClient.delete(tagTable).where(eq(tagTable.id, id));
+
+      res.json({ msg: "Delete tag successfully", data: { id } });
+    } catch (err) {
+      next(err);
+    }
+  })();
+});
+
 
 app.post("/todo/all", async (req, res, next) => {
   try {
@@ -109,6 +198,36 @@ app.post("/todo/all", async (req, res, next) => {
     next(err);
   }
 });
+
+app.post("/tags/unused", async (req, res, next) => {
+  try {
+    // ดึง tag ทั้งหมด
+    const allTags = await dbClient.select().from(tagTable);
+
+    // ดึง tag_id ที่ใช้อยู่ใน todo
+    const usedTagIds = await dbClient
+      .select({ tag_id: todoTable.tagId })
+      .from(todoTable)
+
+    const usedIdsSet = new Set(usedTagIds.map((t) => t.tag_id));
+
+    // หา tag ที่ไม่ได้ถูกใช้
+    const unusedTags = allTags.filter((tag) => !usedIdsSet.has(tag.id));
+
+    // ลบ tag ที่ไม่ถูกใช้
+    for (const tag of unusedTags) {
+      await dbClient.delete(tagTable).where(eq(tagTable.id, tag.id));
+    }
+
+    res.json({
+      msg: "Deleted unused tags successfully",
+      deletedCount: unusedTags.length,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 // JSON Error Middleware
 const jsonErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
