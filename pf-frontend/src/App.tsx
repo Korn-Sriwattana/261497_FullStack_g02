@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { type TodoItem } from "./types";
+import { type TodoItem, type TagItem, type TagOption } from "./types";
 import dayjs from "dayjs";
+import TagDropdown from "./TagDropdown";
 
 function App() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [allTodos, setAllTodos] = useState<TodoItem[]>([]);
   const [inputText, setInputText] = useState("");
   const [mode, setMode] = useState<"ADD" | "EDIT">("ADD");
   const [curTodoId, setCurTodoId] = useState("");
@@ -12,14 +14,47 @@ function App() {
   const [sortOption, setSortOption] = useState<"created" | "due">("created");
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
+  const [tags, setTags] = useState<TagItem[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState<string>("");
+  const [filterTagId, setFilterTagId] = useState<string>("");
+
+  async function fetchAllTodos() {
+    try {
+      const res = await axios.get<TodoItem[]>("/api/todo");
+      setAllTodos(res.data);
+    } catch {
+      alert("Failed to fetch all todos");
+    }
+  }
+
   async function fetchData() {
-    const res = await axios.get<TodoItem[]>("api/todo");
-    setTodos(res.data);
+    const url = filterTagId ? `/api/todo?tagId=${filterTagId}` : "/api/todo";
+    try {
+      const res = await axios.get<TodoItem[]>(url);
+      setTodos(res.data);
+    } catch {
+      alert("Failed to fetch todos");
+    }
+  }
+
+  async function fetchTags() {
+    try {
+      const res = await axios.get<TagItem[]>("/api/tags");
+      setTags(res.data);
+    } catch (err) {
+      alert("Failed to fetch tags");
+    }
   }
 
   useEffect(() => {
+    fetchAllTodos();
     fetchData();
+    fetchTags();
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [filterTagId]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setInputText(e.target.value);
@@ -27,35 +62,35 @@ function App() {
 
   function handleSubmit() {
     if (!inputText) return;
-    if (mode === "ADD") {
-      axios
-        .put("/api/todo", { todoText: inputText, dueDate })
-        .then(() => setInputText(""))
-        .then(fetchData)
-        .catch((err) => alert(err));
-    } else {
-      axios
-        .patch("/api/todo", {
-          id: curTodoId,
-          todoText: inputText,
-          dueDate,
-        })
-        .then(() => {
-          setInputText("");
-          setDueDate("");
-          setMode("ADD");
-          setCurTodoId("");
-        })
-        .then(fetchData)
-        .catch((err) => alert(err));
-    }
+    const data = {
+      id: curTodoId,
+      todoText: inputText,
+      dueDate,
+      tagId: selectedTagId || null,
+    };
+
+    const method = mode === "ADD" ? "put" : "patch";
+
+    axios
+      .request({ url: "/api/todo", method, data })
+      .then(async () => {
+        setInputText("");
+        setDueDate("");
+        setSelectedTagId("");
+        setMode("ADD");
+        setCurTodoId("");
+        await fetchAllTodos();
+        await fetchData();
+      })
+      .catch((err) => alert(err));
   }
 
   function handleDelete(id: string) {
     axios
       .delete("/api/todo", { data: { id } })
-      .then(fetchData)
-      .then(() => {
+      .then(async () => {
+        await fetchAllTodos();
+        await fetchData();
         setMode("ADD");
         setInputText("");
       })
@@ -66,6 +101,8 @@ function App() {
     setMode("ADD");
     setInputText("");
     setCurTodoId("");
+    setDueDate("");
+    setSelectedTagId("");
   }
 
   const sortedTodos = [...todos].sort(
@@ -79,82 +116,83 @@ function App() {
       </header>
 
       <main>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "start",
-            gap: "0.5rem",
-            marginBottom: "0.5rem",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "start", gap: "0.5rem", marginBottom: "0.5rem" }}>
           <input
             type="text"
             onChange={handleChange}
             value={inputText}
             data-cy="input-text"
+            placeholder="New Todo"
           />
+
           <input
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
             data-cy="input-due-date"
           />
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <TagDropdown
+              tags={tags}
+              usedTagIds={allTodos.map((todo) => todo.tagId).filter(Boolean).map(String)}
+              selectedTagId={selectedTagId}
+              onSelectTag={setSelectedTagId}
+              onAddTag={async (name) => {
+                try {
+                  const res = await axios.post("/api/tags", { name });
+                  const newTag = res.data.data;
+                  setTags((prev) => [...prev, newTag]);
+                } catch {
+                  alert("Failed to add tag");
+                }
+              }}
+              onDeleteTag={async (id) => {
+                try {
+                  await axios.delete(`/api/tags/${id}`);
+                  setTags((prev) => prev.filter((t) => t.id !== id));
+                  await fetchAllTodos();
+                  await fetchData();
+                  if (filterTagId === id) setFilterTagId("");
+                } catch (error: any) {
+                  const errMsg = error.response?.data?.error || "Failed to delete tag";
+                  alert(errMsg);
+                }
+              }}
+            />
+          </div>
+
           <button onClick={handleSubmit} data-cy="submit">
             {mode === "ADD" ? "Submit" : "Update"}
           </button>
 
           <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                alignItems: "center",
-                marginBottom: "0.5rem",
-              }}
-            >
+            <button onClick={() => setShowSortDropdown(!showSortDropdown)}
+              style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
               Sort
             </button>
 
             {showSortDropdown && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "2.2rem",
-                  right: 0,
-                  backgroundColor: "#1e1e1e",
-                  borderRadius: "10px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
-                  zIndex: 10,
-                }}
-              >
-                <div
-                  style={dropdownItemStyle}
-                  onClick={() => {
-                    setSortOption("created");
-                    setShowSortDropdown(false);
-                  }}
-                >
-                  📅 Created Date
-                </div>
-                <div
-                  style={dropdownItemStyle}
-                  onClick={() => {
-                    setSortOption("due");
-                    setShowSortDropdown(false);
-                  }}
-                >
-                  📌 Due Date
-                </div>
+              <div style={{ position: "absolute", top: "2.2rem", right: 0, backgroundColor: "#1e1e1e", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.6)", zIndex: 10 }}>
+                <div style={dropdownItemStyle} onClick={() => { setSortOption("created"); setShowSortDropdown(false); }}>📅 Created Date</div>
+                <div style={dropdownItemStyle} onClick={() => { setSortOption("due"); setShowSortDropdown(false); }}>📌 Due Date</div>
               </div>
             )}
           </div>
 
-          {mode === "EDIT" && (
-            <button onClick={handleCancel} className="secondary">
-              Cancel
-            </button>
-          )}
+          {mode === "EDIT" && <button onClick={handleCancel} className="secondary">Cancel</button>}
+        </div>
+
+        <div style={{ marginTop: 20 }}>
+          <label>
+            View Todos by tag🏷️ {" "}
+            <select value={filterTagId} data-cy="tag-filter" onChange={(e) => setFilterTagId(e.target.value)}>
+              <option value="">All Todos</option>
+              {tags.map((tag) => (
+                <option key={tag.id} value={tag.id}>{tag.name}</option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div data-cy="todo-item-wrapper">
@@ -162,40 +200,28 @@ function App() {
             const { date, time } = formatDateTime(item.createdAt);
             const text = item.todoText;
             return (
-              <article
-                key={item.id}
-                style={{
-                  display: "flex",
-                  gap: "0.5rem",
-                  alignItems: "center",
-                }}
-              >
+              <article key={item.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                 <div>({idx + 1})</div>
                 <div>📅{date}</div>
                 <div>⏰{time}</div>
+                <div data-cy="todo-tag">
+                  {item.tagId ? "🏷️" + tags.find(tag => tag.id === item.tagId)?.name || "No Tag" : ""}
+                </div>
                 <div data-cy="todo-item-text">📰{text}</div>
                 <div>
-                  📌 Due:{" "}
-                  {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
+                  📌 Due: {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
                 </div>
-                <div
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    setMode("EDIT");
-                    setCurTodoId(item.id);
-                    setInputText(item.todoText);
-                    setDueDate(item.dueDate || "");
-                  }}
-                  data-cy="todo-item-update"
-                >
+                <div style={{ cursor: "pointer" }} onClick={() => {
+                  setMode("EDIT");
+                  setCurTodoId(item.id);
+                  setInputText(item.todoText);
+                  setDueDate(item.dueDate || "");
+                  setSelectedTagId(item.tagId || "");
+                }} data-cy="todo-item-update">
                   {curTodoId !== item.id ? "🖊️" : "✍🏻"}
                 </div>
                 {mode === "ADD" && (
-                  <div
-                    style={{ cursor: "pointer" }}
-                    onClick={() => handleDelete(item.id)}
-                    data-cy="todo-item-delete"
-                  >
+                  <div style={{ cursor: "pointer" }} onClick={() => handleDelete(item.id)} data-cy="todo-item-delete">
                     🗑️
                   </div>
                 )}
@@ -219,25 +245,17 @@ const dropdownItemStyle: React.CSSProperties = {
 };
 
 function formatDateTime(dateStr: string) {
-  if (!dayjs(dateStr).isValid()) {
-    return { date: "N/A", time: "N/A" };
-  }
+  if (!dayjs(dateStr).isValid()) return { date: "N/A", time: "N/A" };
   const dt = dayjs(dateStr);
-  const date = dt.format("D/MM/YY");
-  const time = dt.format("HH:mm");
-  return { date, time };
+  return { date: dt.format("D/MM/YY"), time: dt.format("HH:mm") };
 }
 
 function compareDate(a: TodoItem, b: TodoItem) {
-  const da = dayjs(a.createdAt);
-  const db = dayjs(b.createdAt);
-  return da.isBefore(db) ? -1 : 1;
+  return dayjs(a.createdAt).isBefore(dayjs(b.createdAt)) ? -1 : 1;
 }
 
 function compareDueDate(a: TodoItem, b: TodoItem) {
   if (!a.dueDate) return 1;
   if (!b.dueDate) return -1;
-  const da = dayjs(a.dueDate);
-  const db = dayjs(b.dueDate);
-  return da.isBefore(db) ? -1 : 1;
+  return dayjs(a.dueDate).isBefore(dayjs(b.dueDate)) ? -1 : 1;
 }

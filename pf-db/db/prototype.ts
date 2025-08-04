@@ -38,7 +38,7 @@ async function deleteData() {
   dbConn.end();
 }
 
-// insertData();
-queryData();
+insertData();
+// queryData();
 // updateData();
 // deleteData();

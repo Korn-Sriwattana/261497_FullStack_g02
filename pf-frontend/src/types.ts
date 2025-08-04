@@ -5,4 +5,15 @@ export interface TodoItem {
   createdAt: string;
   updatedAt: string;
   dueDate: string;
+  tagId?: string | null;       // tagId อาจจะไม่มีหรือเป็น null ก็ได้
+  tagName?: string | null;     // ชื่อ tag (optional)
+}
+
+export interface TagItem {
+  id: string;
+  name: string;
+}
+export interface TagOption {
+  label: string;
+  value: string;
 }
