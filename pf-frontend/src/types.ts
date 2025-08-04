@@ -4,7 +4,7 @@ export interface TodoItem {
   isDone: boolean;
   createdAt: string;
   updatedAt: string;
-  dueDate: string;
+  dueDate?: string | null;
   tagId?: string | null;       // tagId อาจจะไม่มีหรือเป็น null ก็ได้
   tagName?: string | null;     // ชื่อ tag (optional)
 }
