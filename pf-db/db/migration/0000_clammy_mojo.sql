@@ -3,5 +3,6 @@ CREATE TABLE "todo" (
 	"todo_text" varchar(255) NOT NULL,
 	"is_done" boolean DEFAULT false,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp (3)
+	"updated_at" timestamp (3),
+	"due_date" timestamp
 );

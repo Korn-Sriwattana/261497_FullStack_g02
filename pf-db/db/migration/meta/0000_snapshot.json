@@ -1,5 +1,5 @@
 {
-  "id": "154eaf09-9bb4-4f72-b904-80cc07bf8930",
+  "id": "25007994-e2f1-47d5-abd9-fe6d1daec412",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -38,6 +38,12 @@
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp (3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         }

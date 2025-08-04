@@ -3,7 +3,7 @@ import { dbClient } from "@db/client.js";
 import { todoTable, tagTable } from "@db/schema.js";
 import cors from "cors";
 import Debug from "debug";
-import { eq } from "drizzle-orm";
+import { eq , asc , desc , isNull } from "drizzle-orm";
 import type { ErrorRequestHandler } from "express";
 import express from "express";
 import helmet from "helmet";
@@ -70,29 +70,33 @@ app.post("/tags", async (req, res, next) => {
 // ดึง todo ทั้งหมด หรือ filter ตาม tagId ถ้ามี
 app.get("/todo", async (req, res, next) => {
   try {
+    const sortBy = req.query.sortBy as string | undefined;
     const tagId = req.query.tagId as string | undefined;
 
-    let todos;
+    let query = dbClient.select().from(todoTable);
+
     if (tagId) {
-      todos = await dbClient
-        .select()
-        .from(todoTable)
-        .where(eq(todoTable.tagId, tagId));
-    } else {
-      todos = await dbClient.select().from(todoTable);
+      query = query.where(eq(todoTable.tagId, tagId));
     }
+
+    const todos = await query.orderBy(
+      sortBy === "dueDate"
+        ? [asc(todoTable.dueDate), isNull(todoTable.dueDate)]
+        : [desc(todoTable.createdAt)]
+    );
+
     res.json(todos);
   } catch (err) {
     next(err);
   }
 });
 
-
 // Insert
 app.put("/todo", async (req, res, next) => {
   try {
     const todoText = req.body.todoText ?? "";
-    const tagId = req.body.tagId ?? null; // รับ tagId หรือ null ถ้าไม่มี
+    const dueDate = req.body.dueDate ?? null;
+    const tagId = req.body.tagId ?? null;
 
     if (!todoText) throw new Error("Empty todoText");
 
@@ -100,9 +104,15 @@ app.put("/todo", async (req, res, next) => {
       .insert(todoTable)
       .values({
         todoText,
-        tagId,  // เพิ่ม tagId ลงไป
+        dueDate: dueDate ? new Date(dueDate) : null,
+        tagId,
       })
-      .returning({ id: todoTable.id, todoText: todoTable.todoText, tagId: todoTable.tagId });
+      .returning({
+        id: todoTable.id,
+        todoText: todoTable.todoText,
+        dueDate: todoTable.dueDate,
+        tagId: todoTable.tagId,
+      });
 
     res.json({ msg: `Insert successfully`, data: result[0] });
   } catch (err) {
@@ -115,22 +125,34 @@ app.patch("/todo", async (req, res, next) => {
   try {
     const id = req.body.id ?? "";
     const todoText = req.body.todoText ?? "";
+    const dueDate = req.body.dueDate ?? null;
     const tagId = req.body.tagId ?? null; // รับ tagId หรือ null
 
     if (!todoText || !id) throw new Error("Empty todoText or id");
 
-    // Check for existence if data
+    // ตรวจสอบว่ามี todo นี้อยู่หรือไม่
     const results = await dbClient.query.todoTable.findMany({
       where: eq(todoTable.id, id),
     });
     if (results.length === 0) throw new Error("Invalid id");
 
+    // อัปเดตข้อมูล
     const result = await dbClient
       .update(todoTable)
-      .set({ todoText, tagId })  // เพิ่ม tagId
+      .set({
+        todoText,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        tagId,
+      })
       .where(eq(todoTable.id, id))
-      .returning({ id: todoTable.id, todoText: todoTable.todoText, tagId: todoTable.tagId });
-    res.json({ msg: `Update successfully`, data: result });
+      .returning({
+        id: todoTable.id,
+        todoText: todoTable.todoText,
+        dueDate: todoTable.dueDate,
+        tagId: todoTable.tagId,
+      });
+
+    res.json({ msg: `Update successfully`, data: result[0] });
   } catch (err) {
     next(err);
   }
