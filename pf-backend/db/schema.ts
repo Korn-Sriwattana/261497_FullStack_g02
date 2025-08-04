@@ -14,4 +14,5 @@ export const todoTable = pgTable("todo", {
   updatedAt: timestamp("updated_at", { mode: "date", precision: 3 }).$onUpdate(
     () => new Date()
   ),
+  dueDate: timestamp("due_date", { mode: "date" }), 
 });

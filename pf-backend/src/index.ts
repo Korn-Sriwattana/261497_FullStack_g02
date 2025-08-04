@@ -3,7 +3,7 @@ import { dbClient } from "@db/client.js";
 import { todoTable } from "@db/schema.js";
 import cors from "cors";
 import Debug from "debug";
-import { eq } from "drizzle-orm";
+import { eq , asc , desc , isNull } from "drizzle-orm";
 import type { ErrorRequestHandler } from "express";
 import express from "express";
 import helmet from "helmet";
@@ -28,7 +28,15 @@ app.use(express.json());
 // Query
 app.get("/todo", async (req, res, next) => {
   try {
-    const results = await dbClient.query.todoTable.findMany();
+    
+    const sortBy = req.query.sortBy;
+    
+    const results = await dbClient.query.todoTable.findMany({
+      orderBy:
+        sortBy == "dueDate"
+        ? [asc(todoTable.dueDate), isNull(todoTable.dueDate)]
+        : [desc(todoTable.createdAt)],
+    });
     res.json(results);
   } catch (err) {
     next(err);
@@ -39,13 +47,21 @@ app.get("/todo", async (req, res, next) => {
 app.put("/todo", async (req, res, next) => {
   try {
     const todoText = req.body.todoText ?? "";
+    const dueDate = req.body.dueDate ?? null;
+
     if (!todoText) throw new Error("Empty todoText");
+    
     const result = await dbClient
       .insert(todoTable)
       .values({
         todoText,
+        dueDate: dueDate ? new Date(dueDate) : null, 
       })
-      .returning({ id: todoTable.id, todoText: todoTable.todoText });
+      .returning({ 
+        id: todoTable.id,
+        todoText: todoTable.todoText,
+        dueDate: todoTable.dueDate,
+      });
     res.json({ msg: `Insert successfully`, data: result[0] });
   } catch (err) {
     next(err);
@@ -57,6 +73,8 @@ app.patch("/todo", async (req, res, next) => {
   try {
     const id = req.body.id ?? "";
     const todoText = req.body.todoText ?? "";
+    const dueDate = req.body.dueDate ?? null;
+
     if (!todoText || !id) throw new Error("Empty todoText or id");
 
     // Check for existence if data
@@ -67,9 +85,16 @@ app.patch("/todo", async (req, res, next) => {
 
     const result = await dbClient
       .update(todoTable)
-      .set({ todoText })
+      .set({ 
+        todoText,
+        dueDate: dueDate ? new Date(dueDate) : null, 
+      })
       .where(eq(todoTable.id, id))
-      .returning({ id: todoTable.id, todoText: todoTable.todoText });
+      .returning({ 
+        id: todoTable.id,
+        todoText: todoTable.todoText,
+        dueDate: todoTable.dueDate,
+      });
     res.json({ msg: `Update successfully`, data: result });
   } catch (err) {
     next(err);
