@@ -269,6 +269,25 @@ app.post("/tags/unused", async (req, res, next) => {
   }
 });
 
+app.patch("/todo/status", async (req, res, next) => {
+  try {
+    const { id, isDone } = req.body;
+
+    if (!id || typeof isDone !== "boolean")
+      throw new Error("Missing id or isDone");
+
+    const result = await dbClient
+      .update(todoTable)
+      .set({ isDone })
+      .where(eq(todoTable.id, id))
+      .returning({ id: todoTable.id, isDone: todoTable.isDone });
+
+    res.json({ msg: "Updated status", data: result[0] });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // JSON Error Middleware
 const jsonErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   debug(err.message);

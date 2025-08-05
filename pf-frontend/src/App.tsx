@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { type TodoItem, type TagItem } from "./types"; //, type TagOption
+import { type TodoItem, type TagItem } from "./types";
 import dayjs from "dayjs";
 import TagDropdown from "./TagDropdown";
 
@@ -17,6 +17,9 @@ function App() {
   const [tags, setTags] = useState<TagItem[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string>("");
   const [filterTagId, setFilterTagId] = useState<string>("");
+  const [showStatusFilter, setShowStatusFilter] = useState<
+    "ALL" | "DONE" | "UNDONE"
+  >("ALL");
 
   async function fetchAllTodos() {
     try {
@@ -105,6 +108,13 @@ function App() {
     setSelectedTagId("");
   }
 
+  function toggleIsDone(id: string, isDone: boolean) {
+    axios
+      .patch("/api/todo/status", { id, isDone })
+      .then(() => fetchData())
+      .catch(() => alert("Failed to update status"));
+  }
+
   const sortedTodos = [...todos].sort(
     sortOption === "due" ? compareDueDate : compareDate
   );
@@ -119,9 +129,10 @@ function App() {
         <div
           style={{
             display: "flex",
-            alignItems: "start",
+            alignItems: "center",
             gap: "0.5rem",
             marginBottom: "0.5rem",
+            flexWrap: "wrap",
           }}
         >
           <input
@@ -177,52 +188,27 @@ function App() {
             {mode === "ADD" ? "Submit" : "Update"}
           </button>
 
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setShowSortDropdown(!showSortDropdown)}
-              style={{
-                display: "flex",
-                gap: "0.5rem",
-                alignItems: "center",
-                marginBottom: "0.5rem",
-              }}
-            >
-              Sort
-            </button>
+          <button
+            onClick={() => {
+              setShowSortDropdown(!showSortDropdown);
+            }}
+          >
+            Sort
+          </button>
 
-            {showSortDropdown && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "2.2rem",
-                  right: 0,
-                  backgroundColor: "#1e1e1e",
-                  borderRadius: "10px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
-                  zIndex: 10,
-                }}
-              >
-                <div
-                  style={dropdownItemStyle}
-                  onClick={() => {
-                    setSortOption("created");
-                    setShowSortDropdown(false);
-                  }}
-                >
-                  📅 Created Date
-                </div>
-                <div
-                  style={dropdownItemStyle}
-                  onClick={() => {
-                    setSortOption("due");
-                    setShowSortDropdown(false);
-                  }}
-                >
-                  📌 Due Date
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => {
+              setShowStatusFilter((prev) =>
+                prev === "ALL" ? "DONE" : prev === "DONE" ? "UNDONE" : "ALL"
+              );
+            }}
+          >
+            {showStatusFilter === "ALL"
+              ? "📋 All"
+              : showStatusFilter === "DONE"
+              ? "✅ Done"
+              : "🕓 Undone"}
+          </button>
 
           {mode === "EDIT" && (
             <button onClick={handleCancel} className="secondary">
@@ -230,6 +216,39 @@ function App() {
             </button>
           )}
         </div>
+
+        {showSortDropdown && (
+          <div
+            style={{
+              position: "absolute",
+              top: "6.5rem",
+              right: "1rem",
+              backgroundColor: "#1e1e1e",
+              borderRadius: "10px",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
+              zIndex: 10,
+            }}
+          >
+            <div
+              style={dropdownItemStyle}
+              onClick={() => {
+                setSortOption("created");
+                setShowSortDropdown(false);
+              }}
+            >
+              📅 Created Date
+            </div>
+            <div
+              style={dropdownItemStyle}
+              onClick={() => {
+                setSortOption("due");
+                setShowSortDropdown(false);
+              }}
+            >
+              📌 Due Date
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: 20 }}>
           <label>
@@ -250,53 +269,84 @@ function App() {
         </div>
 
         <div data-cy="todo-item-wrapper">
-          {sortedTodos.map((item, idx) => {
-            const { date, time } = formatDateTime(item.createdAt);
-            const text = item.todoText;
-            return (
-              <article
-                key={item.id}
-                style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
-              >
-                <div>({idx + 1})</div>
-                <div>📅{date}</div>
-                <div>⏰{time}</div>
-                <div data-cy="todo-tag">
-                  {item.tagId
-                    ? "🏷️" + tags.find((tag) => tag.id === item.tagId)?.name ||
-                      "No Tag"
-                    : ""}
-                </div>
-                <div data-cy="todo-item-text">📰{text}</div>
-                <div>
-                  📌 Due:{" "}
-                  {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
-                </div>
-                <div
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    setMode("EDIT");
-                    setCurTodoId(item.id);
-                    setInputText(item.todoText);
-                    setDueDate(item.dueDate || "");
-                    setSelectedTagId(item.tagId || "");
+          {sortedTodos
+            .filter((item) =>
+              showStatusFilter === "ALL"
+                ? true
+                : showStatusFilter === "DONE"
+                ? item.isDone
+                : !item.isDone
+            )
+            .map((item, idx) => {
+              const { date, time } = formatDateTime(item.createdAt);
+              const text = item.todoText;
+              return (
+                <article
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    alignItems: "center",
                   }}
-                  data-cy="todo-item-update"
                 >
-                  {curTodoId !== item.id ? "🖊️" : "✍🏻"}
-                </div>
-                {mode === "ADD" && (
+                  <div>({idx + 1})</div>
+                  <div>📅{date}</div>
+                  <div>⏰{time}</div>
+                  <div data-cy="todo-tag">
+                    {item.tagId
+                      ? "🏷️" +
+                          tags.find((tag) => tag.id === item.tagId)?.name ||
+                        "No Tag"
+                      : ""}
+                  </div>
+                  <div
+                    data-cy="todo-item-text"
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.isDone}
+                      onChange={() => toggleIsDone(item.id, !item.isDone)}
+                      title="Mark complete"
+                    />
+                    <span
+                      style={{
+                        textDecoration: item.isDone ? "line-through" : "none",
+                        opacity: item.isDone ? 0.6 : 1,
+                      }}
+                    >
+                      📰{text}
+                    </span>
+                  </div>
+                  <div>
+                    📌 Due:{" "}
+                    {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
+                  </div>
                   <div
                     style={{ cursor: "pointer" }}
-                    onClick={() => handleDelete(item.id)}
-                    data-cy="todo-item-delete"
+                    onClick={() => {
+                      setMode("EDIT");
+                      setCurTodoId(item.id);
+                      setInputText(item.todoText);
+                      setDueDate(item.dueDate || "");
+                      setSelectedTagId(item.tagId || "");
+                    }}
+                    data-cy="todo-item-update"
                   >
-                    🗑️
+                    {curTodoId !== item.id ? "🖊️" : "✍🏻"}
                   </div>
-                )}
-              </article>
-            );
-          })}
+                  {mode === "ADD" && (
+                    <div
+                      style={{ cursor: "pointer" }}
+                      onClick={() => handleDelete(item.id)}
+                      data-cy="todo-item-delete"
+                    >
+                      🗑️
+                    </div>
+                  )}
+                </article>
+              );
+            })}
         </div>
       </main>
     </div>
