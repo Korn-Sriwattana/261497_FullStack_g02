@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { type TodoItem, type TagItem, type TagOption } from "./types";
+import { type TodoItem, type TagItem } from "./types"; //, type TagOption
 import dayjs from "dayjs";
 import TagDropdown from "./TagDropdown";
 
@@ -116,7 +116,14 @@ function App() {
       </header>
 
       <main>
-        <div style={{ display: "flex", alignItems: "start", gap: "0.5rem", marginBottom: "0.5rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "start",
+            gap: "0.5rem",
+            marginBottom: "0.5rem",
+          }}
+        >
           <input
             type="text"
             onChange={handleChange}
@@ -135,7 +142,10 @@ function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <TagDropdown
               tags={tags}
-              usedTagIds={allTodos.map((todo) => todo.tagId).filter(Boolean).map(String)}
+              usedTagIds={allTodos
+                .map((todo) => todo.tagId)
+                .filter(Boolean)
+                .map(String)}
               selectedTagId={selectedTagId}
               onSelectTag={setSelectedTagId}
               onAddTag={async (name) => {
@@ -155,7 +165,8 @@ function App() {
                   await fetchData();
                   if (filterTagId === id) setFilterTagId("");
                 } catch (error: any) {
-                  const errMsg = error.response?.data?.error || "Failed to delete tag";
+                  const errMsg =
+                    error.response?.data?.error || "Failed to delete tag";
                   alert(errMsg);
                 }
               }}
@@ -167,29 +178,72 @@ function App() {
           </button>
 
           <div style={{ position: "relative" }}>
-            <button onClick={() => setShowSortDropdown(!showSortDropdown)}
-              style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "center",
+                marginBottom: "0.5rem",
+              }}
+            >
               Sort
             </button>
 
             {showSortDropdown && (
-              <div style={{ position: "absolute", top: "2.2rem", right: 0, backgroundColor: "#1e1e1e", borderRadius: "10px", boxShadow: "0 4px 12px rgba(0,0,0,0.6)", zIndex: 10 }}>
-                <div style={dropdownItemStyle} onClick={() => { setSortOption("created"); setShowSortDropdown(false); }}>📅 Created Date</div>
-                <div style={dropdownItemStyle} onClick={() => { setSortOption("due"); setShowSortDropdown(false); }}>📌 Due Date</div>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "2.2rem",
+                  right: 0,
+                  backgroundColor: "#1e1e1e",
+                  borderRadius: "10px",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
+                  zIndex: 10,
+                }}
+              >
+                <div
+                  style={dropdownItemStyle}
+                  onClick={() => {
+                    setSortOption("created");
+                    setShowSortDropdown(false);
+                  }}
+                >
+                  📅 Created Date
+                </div>
+                <div
+                  style={dropdownItemStyle}
+                  onClick={() => {
+                    setSortOption("due");
+                    setShowSortDropdown(false);
+                  }}
+                >
+                  📌 Due Date
+                </div>
               </div>
             )}
           </div>
 
-          {mode === "EDIT" && <button onClick={handleCancel} className="secondary">Cancel</button>}
+          {mode === "EDIT" && (
+            <button onClick={handleCancel} className="secondary">
+              Cancel
+            </button>
+          )}
         </div>
 
         <div style={{ marginTop: 20 }}>
           <label>
-            View Todos by tag🏷️ {" "}
-            <select value={filterTagId} data-cy="tag-filter" onChange={(e) => setFilterTagId(e.target.value)}>
+            View Todos by tag🏷️{" "}
+            <select
+              value={filterTagId}
+              data-cy="tag-filter"
+              onChange={(e) => setFilterTagId(e.target.value)}
+            >
               <option value="">All Todos</option>
               {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>{tag.name}</option>
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
               ))}
             </select>
           </label>
@@ -200,28 +254,43 @@ function App() {
             const { date, time } = formatDateTime(item.createdAt);
             const text = item.todoText;
             return (
-              <article key={item.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+              <article
+                key={item.id}
+                style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
+              >
                 <div>({idx + 1})</div>
                 <div>📅{date}</div>
                 <div>⏰{time}</div>
                 <div data-cy="todo-tag">
-                  {item.tagId ? "🏷️" + tags.find(tag => tag.id === item.tagId)?.name || "No Tag" : ""}
+                  {item.tagId
+                    ? "🏷️" + tags.find((tag) => tag.id === item.tagId)?.name ||
+                      "No Tag"
+                    : ""}
                 </div>
                 <div data-cy="todo-item-text">📰{text}</div>
                 <div>
-                  📌 Due: {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
+                  📌 Due:{" "}
+                  {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
                 </div>
-                <div style={{ cursor: "pointer" }} onClick={() => {
-                  setMode("EDIT");
-                  setCurTodoId(item.id);
-                  setInputText(item.todoText);
-                  setDueDate(item.dueDate || "");
-                  setSelectedTagId(item.tagId || "");
-                }} data-cy="todo-item-update">
+                <div
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    setMode("EDIT");
+                    setCurTodoId(item.id);
+                    setInputText(item.todoText);
+                    setDueDate(item.dueDate || "");
+                    setSelectedTagId(item.tagId || "");
+                  }}
+                  data-cy="todo-item-update"
+                >
                   {curTodoId !== item.id ? "🖊️" : "✍🏻"}
                 </div>
                 {mode === "ADD" && (
-                  <div style={{ cursor: "pointer" }} onClick={() => handleDelete(item.id)} data-cy="todo-item-delete">
+                  <div
+                    style={{ cursor: "pointer" }}
+                    onClick={() => handleDelete(item.id)}
+                    data-cy="todo-item-delete"
+                  >
                     🗑️
                   </div>
                 )}

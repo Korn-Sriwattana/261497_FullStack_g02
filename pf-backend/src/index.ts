@@ -3,7 +3,7 @@ import { dbClient } from "@db/client.js";
 import { todoTable, tagTable } from "@db/schema.js";
 import cors from "cors";
 import Debug from "debug";
-import { eq , asc , desc , isNull } from "drizzle-orm";
+import { eq, asc, desc, isNull } from "drizzle-orm";
 import type { ErrorRequestHandler } from "express";
 import express from "express";
 import helmet from "helmet";
@@ -80,12 +80,20 @@ app.get("/todo", async (req, res, next) => {
         .select()
         .from(todoTable)
         .where((t) => eq(t.tagId, tagId))
-        .orderBy(sortBy === "dueDate" ? asc(todoTable.dueDate) : desc(todoTable.createdAt));
+        .orderBy(
+          sortBy === "dueDate"
+            ? asc(todoTable.dueDate)
+            : desc(todoTable.createdAt)
+        );
     } else {
       todos = await dbClient
         .select()
         .from(todoTable)
-        .orderBy(sortBy === "dueDate" ? asc(todoTable.dueDate) : desc(todoTable.createdAt));
+        .orderBy(
+          sortBy === "dueDate"
+            ? asc(todoTable.dueDate)
+            : desc(todoTable.createdAt)
+        );
     }
 
     res.json(todos);
@@ -99,7 +107,7 @@ app.put("/todo", async (req, res, next) => {
   try {
     console.log("Request Body:", req.body);
     const todoText = req.body.todoText ?? "";
-    const tagId = req.body.tagId ?? null; 
+    const tagId = req.body.tagId ?? null;
     const dueDate = req.body.dueDate ?? null;
 
     if (!todoText) throw new Error("Empty todoText");
@@ -109,9 +117,14 @@ app.put("/todo", async (req, res, next) => {
       .values({
         todoText,
         tagId,
-        dueDate: dueDate ? new Date(dueDate) : null, 
+        dueDate: dueDate ? new Date(dueDate) : null,
       })
-      .returning({ id: todoTable.id, todoText: todoTable.todoText, tagId: todoTable.tagId, dueDate: todoTable.dueDate });
+      .returning({
+        id: todoTable.id,
+        todoText: todoTable.todoText,
+        tagId: todoTable.tagId,
+        dueDate: todoTable.dueDate,
+      });
 
     res.json({ msg: `Insert successfully`, data: result[0] });
   } catch (err) {
@@ -157,7 +170,6 @@ app.patch("/todo", async (req, res, next) => {
   }
 });
 
-
 // Delete
 app.delete("/todo", async (req, res, next) => {
   try {
@@ -189,14 +201,22 @@ app.delete("/tags/:id", function (req, res, next) {
         return res.status(400).json({ error: "Empty tag id" });
       }
 
-      const tagExists = await dbClient.select().from(tagTable).where(eq(tagTable.id, id));
+      const tagExists = await dbClient
+        .select()
+        .from(tagTable)
+        .where(eq(tagTable.id, id));
       if (tagExists.length === 0) {
         return res.status(404).json({ error: "Tag not found" });
       }
 
-      const todosUsingTag = await dbClient.select().from(todoTable).where(eq(todoTable.tagId, id));
+      const todosUsingTag = await dbClient
+        .select()
+        .from(todoTable)
+        .where(eq(todoTable.tagId, id));
       if (todosUsingTag.length > 0) {
-        return res.status(400).json({ error: "Cannot delete tag because it is used by some todos" });
+        return res.status(400).json({
+          error: "Cannot delete tag because it is used by some todos",
+        });
       }
 
       await dbClient.delete(tagTable).where(eq(tagTable.id, id));
@@ -207,7 +227,6 @@ app.delete("/tags/:id", function (req, res, next) {
     }
   })();
 });
-
 
 app.post("/todo/all", async (req, res, next) => {
   try {
@@ -229,7 +248,7 @@ app.post("/tags/unused", async (req, res, next) => {
     // ดึง tag_id ที่ใช้อยู่ใน todo
     const usedTagIds = await dbClient
       .select({ tag_id: todoTable.tagId })
-      .from(todoTable)
+      .from(todoTable);
 
     const usedIdsSet = new Set(usedTagIds.map((t) => t.tag_id));
 
@@ -250,10 +269,10 @@ app.post("/tags/unused", async (req, res, next) => {
   }
 });
 
-
 // JSON Error Middleware
 const jsonErrorHandler: ErrorRequestHandler = (err, req, res, next) => {
   debug(err.message);
+  console.error(err);
   const errorResponse = {
     message: err.message || "Internal Server Error",
     type: err.name || "Error",
