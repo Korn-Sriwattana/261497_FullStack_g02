@@ -61,7 +61,7 @@ function TagDropdown({
           padding: "8px",
           borderRadius: 4,
           display: "flex",
-          alignItems: "center",       // จัดกลางแนวตั้ง
+          alignItems: "center", // จัดกลางแนวตั้ง
           justifyContent: "flex-start", // จัดชิดซ้าย
           cursor: "pointer",
           backgroundColor: "#fff",
@@ -139,7 +139,7 @@ function TagDropdown({
             }}
           >
             {tags.map((tag) => {
-              const isUsed = usedTagIds.includes(tag.id);
+              // const isUsed = usedTagIds.includes(tag.id);
               return (
                 <li
                   key={tag.id}
@@ -172,35 +172,43 @@ function TagDropdown({
                 >
                   <span style={{ flexGrow: 1 }}>{tag.name}</span>
                   <button
-                  data-cy={`delete-tag-${tag.id}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const isUsed = usedTagIds.includes(tag.id);
-                    if (isUsed) {
-                      alert(`Cannot delete tag "${tag.name}" because it is in use.`);
-                      return;
-                    }
-                    onDeleteTag(tag.id);
-                    if (tag.id === selectedTagId) {
-                      onSelectTag("");
-                    }
-                  }}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    color: tag.id === selectedTagId ? "white" : (usedTagIds.includes(tag.id) ? "#999" : "red"),
-                    fontWeight: "bold",
-                    cursor: usedTagIds.includes(tag.id) ? "not-allowed" : "pointer",
-                    fontSize: 16,
-                    marginLeft: 8,
-                  }}
-                  aria-label={`Delete tag ${tag.name}`}
-                  tabIndex={-1}
-                  disabled={usedTagIds.includes(tag.id)}
-                >
-                  ×
-                </button>
-
+                    data-cy={`delete-tag-${tag.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const isUsed = usedTagIds.includes(tag.id);
+                      if (isUsed) {
+                        alert(
+                          `Cannot delete tag "${tag.name}" because it is in use.`
+                        );
+                        return;
+                      }
+                      onDeleteTag(tag.id);
+                      if (tag.id === selectedTagId) {
+                        onSelectTag("");
+                      }
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color:
+                        tag.id === selectedTagId
+                          ? "white"
+                          : usedTagIds.includes(tag.id)
+                          ? "#999"
+                          : "red",
+                      fontWeight: "bold",
+                      cursor: usedTagIds.includes(tag.id)
+                        ? "not-allowed"
+                        : "pointer",
+                      fontSize: 16,
+                      marginLeft: 8,
+                    }}
+                    aria-label={`Delete tag ${tag.name}`}
+                    tabIndex={-1}
+                    disabled={usedTagIds.includes(tag.id)}
+                  >
+                    ×
+                  </button>
                 </li>
               );
             })}
