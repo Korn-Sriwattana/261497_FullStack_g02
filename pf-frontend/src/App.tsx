@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { type TodoItem, type TagItem } from "./types";
 import dayjs from "dayjs";
@@ -12,14 +12,22 @@ function App() {
   const [curTodoId, setCurTodoId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [sortOption, setSortOption] = useState<"created" | "due">("created");
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
-
   const [tags, setTags] = useState<TagItem[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string>("");
   const [filterTagId, setFilterTagId] = useState<string>("");
-  const [showStatusFilter, setShowStatusFilter] = useState<
-    "ALL" | "DONE" | "UNDONE"
-  >("ALL");
+  const [showStatusFilter, setShowStatusFilter] = useState<"ALL" | "DONE" | "UNDONE">("ALL");
+
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchAllTodos();
+    fetchData();
+    fetchTags();
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [filterTagId]);
 
   async function fetchAllTodos() {
     try {
@@ -44,20 +52,10 @@ function App() {
     try {
       const res = await axios.get<TagItem[]>("/api/tags");
       setTags(res.data);
-    } catch (err) {
+    } catch {
       alert("Failed to fetch tags");
     }
   }
-
-  useEffect(() => {
-    fetchAllTodos();
-    fetchData();
-    fetchTags();
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [filterTagId]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setInputText(e.target.value);
@@ -71,9 +69,7 @@ function App() {
       dueDate,
       tagId: selectedTagId || null,
     };
-
     const method = mode === "ADD" ? "put" : "patch";
-
     axios
       .request({ url: "/api/todo", method, data })
       .then(async () => {
@@ -115,148 +111,89 @@ function App() {
       .catch(() => alert("Failed to update status"));
   }
 
-  const sortedTodos = [...todos].sort(
-    sortOption === "due" ? compareDueDate : compareDate
-  );
+  const sortedTodos = [...todos].sort(sortOption === "due" ? compareDueDate : compareDate);
 
   return (
-    <div className="container">
+    <div className="container" style={{ padding: "1rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
       <header>
-        <h1>Todo App</h1>
+        <h1 style={{ fontSize: "2rem" }}>📋 Todo App</h1>
       </header>
 
-      <main>
+      <main style={{ width: "100%", maxWidth: "800px" }}>
+        {/* ✅ Input + Date + Tag + Add */}
         <div
           style={{
             display: "flex",
+            justifyContent: "center",
             alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "0.5rem",
             flexWrap: "wrap",
+            gap: "0.5rem",
+            marginBottom: "1.5rem",
           }}
         >
           <input
             type="text"
             onChange={handleChange}
             value={inputText}
-            data-cy="input-text"
             placeholder="New Todo"
+            style={{ ...inputStyle, minWidth: "200px" }}
           />
 
+          {/* ✅ Date input styled like button */}
           <input
             type="date"
+            ref={dateInputRef}
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            data-cy="input-due-date"
+            style={{ ...inputStyle, minWidth: "160px" }}
           />
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <TagDropdown
-              tags={tags}
-              usedTagIds={allTodos
-                .map((todo) => todo.tagId)
-                .filter(Boolean)
-                .map(String)}
-              selectedTagId={selectedTagId}
-              onSelectTag={setSelectedTagId}
-              onAddTag={async (name) => {
-                try {
-                  const res = await axios.post("/api/tags", { name });
-                  const newTag = res.data.data;
-                  setTags((prev) => [...prev, newTag]);
-                } catch {
-                  alert("Failed to add tag");
-                }
-              }}
-              onDeleteTag={async (id) => {
-                try {
-                  await axios.delete(`/api/tags/${id}`);
-                  setTags((prev) => prev.filter((t) => t.id !== id));
-                  await fetchAllTodos();
-                  await fetchData();
-                  if (filterTagId === id) setFilterTagId("");
-                } catch (error: any) {
-                  const errMsg =
-                    error.response?.data?.error || "Failed to delete tag";
-                  alert(errMsg);
-                }
-              }}
-            />
-          </div>
-
-          <button onClick={handleSubmit} data-cy="submit">
-            {mode === "ADD" ? "Submit" : "Update"}
-          </button>
-
-          <button
-            onClick={() => {
-              setShowSortDropdown(!showSortDropdown);
+          <TagDropdown
+            tags={tags}
+            usedTagIds={allTodos.map((todo) => todo.tagId).filter(Boolean).map(String)}
+            selectedTagId={selectedTagId}
+            onSelectTag={setSelectedTagId}
+            onAddTag={async (name) => {
+              try {
+                const res = await axios.post("/api/tags", { name });
+                setTags((prev) => [...prev, res.data.data]);
+              } catch {
+                alert("Failed to add tag");
+              }
             }}
-          >
-            Sort
-          </button>
-
-          <button
-            onClick={() => {
-              setShowStatusFilter((prev) =>
-                prev === "ALL" ? "DONE" : prev === "DONE" ? "UNDONE" : "ALL"
-              );
+            onDeleteTag={async (id) => {
+              try {
+                await axios.delete(`/api/tags/${id}`);
+                setTags((prev) => prev.filter((t) => t.id !== id));
+                await fetchAllTodos();
+                await fetchData();
+                if (filterTagId === id) setFilterTagId("");
+              } catch (error: any) {
+                const errMsg = error.response?.data?.error || "Failed to delete tag";
+                alert(errMsg);
+              }
             }}
-          >
-            {showStatusFilter === "ALL"
-              ? "📋 All"
-              : showStatusFilter === "DONE"
-              ? "✅ Done"
-              : "🕓 Undone"}
+          />
+
+          <button onClick={handleSubmit} style={buttonStyle}>
+            📨 {mode === "ADD" ? "Add" : "Update"}
           </button>
 
           {mode === "EDIT" && (
-            <button onClick={handleCancel} className="secondary">
-              Cancel
+            <button onClick={handleCancel} style={secondaryButtonStyle}>
+              ❌ Cancel
             </button>
           )}
         </div>
 
-        {showSortDropdown && (
-          <div
-            style={{
-              position: "absolute",
-              top: "6.5rem",
-              right: "1rem",
-              backgroundColor: "#1e1e1e",
-              borderRadius: "10px",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.6)",
-              zIndex: 10,
-            }}
-          >
-            <div
-              style={dropdownItemStyle}
-              onClick={() => {
-                setSortOption("created");
-                setShowSortDropdown(false);
-              }}
-            >
-              📅 Created Date
-            </div>
-            <div
-              style={dropdownItemStyle}
-              onClick={() => {
-                setSortOption("due");
-                setShowSortDropdown(false);
-              }}
-            >
-              📌 Due Date
-            </div>
-          </div>
-        )}
-
-        <div style={{ marginTop: 20 }}>
+        {/* 🔽 Filter + Sort */}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", marginBottom: 10 }}>
           <label>
-            View Todos by tag🏷️{" "}
+            View by Tag 🏷️{" "}
             <select
               value={filterTagId}
-              data-cy="tag-filter"
               onChange={(e) => setFilterTagId(e.target.value)}
+              style={inputStyle}
             >
               <option value="">All Todos</option>
               {tags.map((tag) => (
@@ -266,8 +203,21 @@ function App() {
               ))}
             </select>
           </label>
+
+          <label>
+            Sort by{" "}
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as "created" | "due")}
+              style={inputStyle}
+            >
+              <option value="created">📅 Created</option>
+              <option value="due">📌 Due</option>
+            </select>
+          </label>
         </div>
 
+        {/* 📝 Todo List */}
         <div data-cy="todo-item-wrapper">
           {sortedTodos
             .filter((item) =>
@@ -279,30 +229,26 @@ function App() {
             )
             .map((item, idx) => {
               const { date, time } = formatDateTime(item.createdAt);
-              const text = item.todoText;
               return (
                 <article
                   key={item.id}
                   style={{
                     display: "flex",
-                    gap: "0.5rem",
                     alignItems: "center",
+                    gap: "0.5rem",
+                    marginBottom: "0.5rem",
+                    padding: "0.6rem 1rem",
+                    borderRadius: "12px",
+                    border: "1px solid #ccc",
                   }}
                 >
                   <div>({idx + 1})</div>
-                  <div>📅{date}</div>
-                  <div>⏰{time}</div>
-                  <div data-cy="todo-tag">
-                    {item.tagId
-                      ? "🏷️" +
-                          tags.find((tag) => tag.id === item.tagId)?.name ||
-                        "No Tag"
-                      : ""}
+                  <div>📅 {date}</div>
+                  <div>⏰ {time}</div>
+                  <div>
+                    {item.tagId && `🏷️${tags.find((t) => t.id === item.tagId)?.name || "No Tag"}`}
                   </div>
-                  <div
-                    data-cy="todo-item-text"
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
+                  <div style={{ flex: 1 }}>
                     <input
                       type="checkbox"
                       checked={item.isDone}
@@ -311,16 +257,16 @@ function App() {
                     />
                     <span
                       style={{
+                        marginLeft: 8,
                         textDecoration: item.isDone ? "line-through" : "none",
                         opacity: item.isDone ? 0.6 : 1,
                       }}
                     >
-                      📰{text}
+                      📰 {item.todoText}
                     </span>
                   </div>
                   <div>
-                    📌 Due:{" "}
-                    {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
+                    📌 Due: {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
                   </div>
                   <div
                     style={{ cursor: "pointer" }}
@@ -331,7 +277,6 @@ function App() {
                       setDueDate(item.dueDate || "");
                       setSelectedTagId(item.tagId || "");
                     }}
-                    data-cy="todo-item-update"
                   >
                     {curTodoId !== item.id ? "🖊️" : "✍🏻"}
                   </div>
@@ -339,7 +284,6 @@ function App() {
                     <div
                       style={{ cursor: "pointer" }}
                       onClick={() => handleDelete(item.id)}
-                      data-cy="todo-item-delete"
                     >
                       🗑️
                     </div>
@@ -355,18 +299,34 @@ function App() {
 
 export default App;
 
-const dropdownItemStyle: React.CSSProperties = {
+const inputStyle: React.CSSProperties = {
+  padding: "0.4rem 0.8rem",
+  borderRadius: "10px",
+  border: "1px solid #ccc",
+  fontSize: "0.9rem",
+};
+
+const buttonStyle: React.CSSProperties = {
+  border: "none",
+  borderRadius: "20px",
   padding: "0.5rem 1rem",
   cursor: "pointer",
-  color: "#ddd",
   fontSize: "0.9rem",
-  whiteSpace: "nowrap",
+  backgroundColor: "#cddc39",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  backgroundColor: "#f44336",
 };
 
 function formatDateTime(dateStr: string) {
   if (!dayjs(dateStr).isValid()) return { date: "N/A", time: "N/A" };
   const dt = dayjs(dateStr);
-  return { date: dt.format("D/MM/YY"), time: dt.format("HH:mm") };
+  return {
+    date: dt.format("DD/MM/YYYY"),
+    time: dt.format("HH:mm"),
+  };
 }
 
 function compareDate(a: TodoItem, b: TodoItem) {
