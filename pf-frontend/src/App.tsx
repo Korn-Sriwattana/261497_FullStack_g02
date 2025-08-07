@@ -132,6 +132,7 @@ function App() {
           }}
         >
           <input
+            data-cy="input-text"
             type="text"
             onChange={handleChange}
             value={inputText}
@@ -139,8 +140,8 @@ function App() {
             style={{ ...inputStyle, minWidth: "200px" }}
           />
 
-          {/* ✅ Date input styled like button */}
           <input
+            data-cy="due-date"
             type="date"
             ref={dateInputRef}
             value={dueDate}
@@ -149,6 +150,7 @@ function App() {
           />
 
           <TagDropdown
+            data-cy="tag-select"
             tags={tags}
             usedTagIds={allTodos.map((todo) => todo.tagId).filter(Boolean).map(String)}
             selectedTagId={selectedTagId}
@@ -175,12 +177,12 @@ function App() {
             }}
           />
 
-          <button onClick={handleSubmit} style={buttonStyle}>
+          <button data-cy="submit" onClick={handleSubmit} style={buttonStyle}>
             📨 {mode === "ADD" ? "Add" : "Update"}
           </button>
 
           {mode === "EDIT" && (
-            <button onClick={handleCancel} style={secondaryButtonStyle}>
+            <button data-cy="cancel" onClick={handleCancel} style={secondaryButtonStyle}>
               ❌ Cancel
             </button>
           )}
@@ -191,6 +193,7 @@ function App() {
           <label>
             View by Tag 🏷️{" "}
             <select
+              data-cy="filter-tag"
               value={filterTagId}
               onChange={(e) => setFilterTagId(e.target.value)}
               style={inputStyle}
@@ -207,6 +210,7 @@ function App() {
           <label>
             Sort by{" "}
             <select
+              data-cy="sort-select"
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value as "created" | "due")}
               style={inputStyle}
@@ -269,6 +273,7 @@ function App() {
                     📌 Due: {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
                   </div>
                   <div
+                    data-cy="edit-button"
                     style={{ cursor: "pointer" }}
                     onClick={() => {
                       setMode("EDIT");
@@ -282,6 +287,7 @@ function App() {
                   </div>
                   {mode === "ADD" && (
                     <div
+                      data-cy="delete-button"
                       style={{ cursor: "pointer" }}
                       onClick={() => handleDelete(item.id)}
                     >
