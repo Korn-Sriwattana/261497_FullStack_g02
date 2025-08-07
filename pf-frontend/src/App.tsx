@@ -15,7 +15,9 @@ function App() {
   const [tags, setTags] = useState<TagItem[]>([]);
   const [selectedTagId, setSelectedTagId] = useState<string>("");
   const [filterTagId, setFilterTagId] = useState<string>("");
-  const [showStatusFilter, setShowStatusFilter] = useState<"ALL" | "DONE" | "UNDONE">("ALL");
+  const [showStatusFilter, setShowStatusFilter] = useState<
+    "ALL" | "DONE" | "UNDONE"
+  >("ALL");
 
   const dateInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,10 +113,20 @@ function App() {
       .catch(() => alert("Failed to update status"));
   }
 
-  const sortedTodos = [...todos].sort(sortOption === "due" ? compareDueDate : compareDate);
+  const sortedTodos = [...todos].sort(
+    sortOption === "due" ? compareDueDate : compareDate
+  );
 
   return (
-    <div className="container" style={{ padding: "1rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div
+      className="container"
+      style={{
+        padding: "1rem",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       <header>
         <h1 style={{ fontSize: "2rem" }}>📋 Todo App</h1>
       </header>
@@ -152,7 +164,10 @@ function App() {
           <TagDropdown
             data-cy="tag-select"
             tags={tags}
-            usedTagIds={allTodos.map((todo) => todo.tagId).filter(Boolean).map(String)}
+            usedTagIds={allTodos
+              .map((todo) => todo.tagId)
+              .filter(Boolean)
+              .map(String)}
             selectedTagId={selectedTagId}
             onSelectTag={setSelectedTagId}
             onAddTag={async (name) => {
@@ -171,7 +186,8 @@ function App() {
                 await fetchData();
                 if (filterTagId === id) setFilterTagId("");
               } catch (error: any) {
-                const errMsg = error.response?.data?.error || "Failed to delete tag";
+                const errMsg =
+                  error.response?.data?.error || "Failed to delete tag";
                 alert(errMsg);
               }
             }}
@@ -188,10 +204,20 @@ function App() {
           )}
         </div>
 
-        {/* 🔽 Filter + Sort */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1rem", marginBottom: 10 }}>
-          <label>
-            View by Tag 🏷️{" "}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-end",
+            gap: "1rem",
+            marginBottom: 10,
+          }}
+        >
+          {/* View by Tag */}
+          <label
+            style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
+          >
+            View by Tag 🏷️
             <select
               data-cy="filter-tag"
               value={filterTagId}
@@ -207,16 +233,39 @@ function App() {
             </select>
           </label>
 
-          <label>
-            Sort by{" "}
+          {/* Sort by */}
+          <label
+            style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
+          >
+            Sort by
             <select
               data-cy="sort-select"
               value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as "created" | "due")}
+              onChange={(e) =>
+                setSortOption(e.target.value as "created" | "due")
+              }
               style={inputStyle}
             >
               <option value="created">📅 Created</option>
               <option value="due">📌 Due</option>
+            </select>
+          </label>
+
+          {/* ✅ Status */}
+          <label
+            style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
+          >
+            Status
+            <select
+              value={showStatusFilter}
+              onChange={(e) =>
+                setShowStatusFilter(e.target.value as "ALL" | "DONE" | "UNDONE")
+              }
+              style={inputStyle}
+            >
+              <option value="ALL">📋 All</option>
+              <option value="DONE">✅ Done</option>
+              <option value="UNDONE">🕓 Undone</option>
             </select>
           </label>
         </div>
@@ -250,7 +299,10 @@ function App() {
                   <div>📅 {date}</div>
                   <div>⏰ {time}</div>
                   <div>
-                    {item.tagId && `🏷️${tags.find((t) => t.id === item.tagId)?.name || "No Tag"}`}
+                    {item.tagId &&
+                      `🏷️${
+                        tags.find((t) => t.id === item.tagId)?.name || "No Tag"
+                      }`}
                   </div>
                   <div style={{ flex: 1 }}>
                     <input
@@ -270,7 +322,8 @@ function App() {
                     </span>
                   </div>
                   <div>
-                    📌 Due: {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
+                    📌 Due:{" "}
+                    {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
                   </div>
                   <div
                     data-cy="edit-button"
