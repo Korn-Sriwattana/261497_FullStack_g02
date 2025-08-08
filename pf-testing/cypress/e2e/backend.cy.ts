@@ -126,7 +126,6 @@ describe("Backend", () => {
     });
   });
 
-  
   it("gets tag list", () => {
     const url = Cypress.env("BACKEND_URL");
     cy.request(`${url}/tags`).then((res) => {
@@ -134,7 +133,6 @@ describe("Backend", () => {
       expect(res.body).to.be.an("array");
     });
   });
-
 
   it("deletes tag", () => {
     const url = Cypress.env("BACKEND_URL");
@@ -153,7 +151,6 @@ describe("Backend", () => {
       });
     });
   });
-
 
   it("creates todo with tag", () => {
     const url = Cypress.env("BACKEND_URL");
