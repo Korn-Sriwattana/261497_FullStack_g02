@@ -132,7 +132,6 @@ function App() {
       </header>
 
       <main style={{ width: "100%", maxWidth: "800px" }}>
-        {/* ✅ Input + Date + Tag + Add */}
         <div
           style={{
             display: "flex",
@@ -148,10 +147,10 @@ function App() {
             onChange={handleChange}
             value={inputText}
             placeholder="New Todo"
+            data-cy="input-text"
             style={{ ...inputStyle, minWidth: "200px" }}
           />
 
-          {/* ✅ Date input styled like button */}
           <input
             type="date"
             ref={dateInputRef}
@@ -191,7 +190,7 @@ function App() {
             }}
           />
 
-          <button onClick={handleSubmit} style={buttonStyle}>
+          <button onClick={handleSubmit} style={buttonStyle} data-cy="submit">
             📨 {mode === "ADD" ? "Add" : "Update"}
           </button>
 
@@ -211,7 +210,6 @@ function App() {
             marginBottom: 10,
           }}
         >
-          {/* View by Tag */}
           <label
             style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
           >
@@ -220,17 +218,21 @@ function App() {
               value={filterTagId}
               onChange={(e) => setFilterTagId(e.target.value)}
               style={inputStyle}
+              data-cy="filter-tag-select"
             >
               <option value="">All Todos</option>
               {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
+                <option
+                  key={tag.id}
+                  value={tag.id}
+                  data-cy={`tag-item-${tag.id}`}
+                >
                   {tag.name}
                 </option>
               ))}
             </select>
           </label>
 
-          {/* Sort by */}
           <label
             style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
           >
@@ -247,7 +249,6 @@ function App() {
             </select>
           </label>
 
-          {/* ✅ Status */}
           <label
             style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
           >
@@ -258,6 +259,7 @@ function App() {
                 setShowStatusFilter(e.target.value as "ALL" | "DONE" | "UNDONE")
               }
               style={inputStyle}
+              data-cy="filter-status-select"
             >
               <option value="ALL">📋 All</option>
               <option value="DONE">✅ Done</option>
@@ -266,7 +268,6 @@ function App() {
           </label>
         </div>
 
-        {/* 📝 Todo List */}
         <div data-cy="todo-item-wrapper">
           {sortedTodos
             .filter((item) =>
@@ -281,6 +282,7 @@ function App() {
               return (
                 <article
                   key={item.id}
+                  data-cy="todo-item"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -294,7 +296,7 @@ function App() {
                   <div>({idx + 1})</div>
                   <div>📅 {date}</div>
                   <div>⏰ {time}</div>
-                  <div>
+                  <div data-cy="todo-tag">
                     {item.tagId &&
                       `🏷️${
                         tags.find((t) => t.id === item.tagId)?.name || "No Tag"
@@ -330,17 +332,17 @@ function App() {
                       setDueDate(item.dueDate || "");
                       setSelectedTagId(item.tagId || "");
                     }}
+                    data-cy="todo-item-update"
                   >
                     {curTodoId !== item.id ? "🖊️" : "✍🏻"}
                   </div>
-                  {mode === "ADD" && (
-                    <div
-                      style={{ cursor: "pointer" }}
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      🗑️
-                    </div>
-                  )}
+                  <div
+                    style={{ cursor: "pointer" }}
+                    onClick={() => handleDelete(item.id)}
+                    data-cy="todo-item-delete"
+                  >
+                    🗑️
+                  </div>
                 </article>
               );
             })}

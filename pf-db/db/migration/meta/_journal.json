@@ -29,6 +29,13 @@
       "when": 1754328549143,
       "tag": "0003_confused_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1754675667375,
+      "tag": "0004_yummy_captain_cross",
+      "breakpoints": true
     }
   ]
 }

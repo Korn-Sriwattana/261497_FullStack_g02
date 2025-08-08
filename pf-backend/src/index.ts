@@ -8,6 +8,7 @@ import type { ErrorRequestHandler } from "express";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import { sql } from "drizzle-orm";
 const debug = Debug("pf-backend");
 
 //Intializing the express app
@@ -229,6 +230,7 @@ app.delete("/tags/:id", function (req, res, next) {
 });
 
 app.post("/todo/all", async (req, res, next) => {
+  // console.log("🔥 HIT /todo/all route");
   try {
     await dbClient.delete(todoTable);
     res.json({
