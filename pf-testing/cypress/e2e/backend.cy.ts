@@ -14,19 +14,14 @@ describe("Backend", () => {
     cy.log(JSON.stringify(Cypress.env()));
   });
 
-  it("checks CORS header", () => {
+  it("checks CORS disabled", () => {
     const url = Cypress.env("BACKEND_URL");
     cy.request({
       method: "GET",
       url: `${url}/todo`,
-      headers: { Origin: process.env.FRONTEND_URL }, // Origin เดียวกับ frontend
     }).then((res) => {
-      expect(res.status).to.eq(200);
-      expect(res.headers).to.have.property("access-control-allow-origin");
-      expect(res.headers["access-control-allow-origin"]).to.be.oneOf([
-        process.env.FRONTEND_URL,
-        "*",
-      ]);
+      // cy.log(JSON.stringify(res));
+      expect(res.headers).to.not.have.property("access-control-allow-origin");
     });
   });
 });

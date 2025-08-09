@@ -319,10 +319,18 @@ export default function App() {
   return (
     <main>
       {/* Header with Auth */}
-
-      <div className="header">
-        <h1 className="title">Todo List</h1>
-
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+          maxWidth: 960,
+          margin: "12px auto",
+          padding: "0 12px",
+        }}
+      >
+        <h1 className="title">Todo App</h1>
         <div>
           {authUser ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

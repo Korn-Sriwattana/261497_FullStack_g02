@@ -49,7 +49,6 @@ const openTagDropdown = () => {
   cy.get(".tagdd-panel", { timeout: 6000 }).should("exist").and("be.visible");
 };
 
-
 const openSortMenu = () => cy.contains("sort by").click();
 const chooseSort = (key: "created" | "due date") =>
   cy.contains(".menu .menu-item", key).click();
@@ -190,13 +189,17 @@ describe("Frontend", () => {
     const t1 = `A_${Date.now()}_1`;
     openForm();
     cy.get("[data-cy='input-text']").clear().type(t1);
-    const plus3 = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    const plus3 = new Date(Date.now() + 3 * 86400000)
+      .toISOString()
+      .slice(0, 10);
     cy.get("[data-cy='input-date']").clear().type(plus3);
     cy.get("[data-cy='submit']").click();
     const t2 = `A_${Date.now()}_2`;
     openForm();
     cy.get("[data-cy='input-text']").clear().type(t2);
-    const plus1 = new Date(Date.now() + 1 * 86400000).toISOString().slice(0, 10);
+    const plus1 = new Date(Date.now() + 1 * 86400000)
+      .toISOString()
+      .slice(0, 10);
     cy.get("[data-cy='input-date']").clear().type(plus1);
     cy.get("[data-cy='submit']").click();
     const t3 = `A_${Date.now()}_3`;
