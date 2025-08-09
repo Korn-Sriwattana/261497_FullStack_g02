@@ -24,7 +24,7 @@ describe("Backend", () => {
       expect(res.headers).to.not.have.property("access-control-allow-origin");
     });
   });
-});
+  });
 
 it("checks get response", () => {
   const url = Cypress.env("BACKEND_URL");
