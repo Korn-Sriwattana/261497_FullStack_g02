@@ -1,0 +1,335 @@
+/* App.css */
+main { min-height: 90vh; display: flex; flex-direction: column; }
+
+.title {
+  margin-left: 189px;
+  margin-right: 189px;
+  margin-top: 39px;
+  font-size: 33px;
+  font-weight: 650;
+}
+
+/* แถวตัวกรองแบบเรียบๆ */
+.controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin: 6px 0 8px 189px;
+  color: #8a8f96;
+  padding-bottom: 6px;
+  position: relative;
+}
+.option-btn {
+  all: unset;
+  cursor: pointer;
+  font-size: 14px;
+  color: #000;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  position: relative;
+}
+.option-btn::after {
+  content: "▼";
+  font-size: 10px;
+  line-height: 1;
+  opacity: .6;
+  margin-left: 4px;
+}
+.option-btn:hover { color: #4a4f55; }
+
+/* เมนูใต้ตัวกรอง */
+.opt { position: relative; }
+.menu {
+  position: absolute;
+  top: 22px;
+  left: 0;
+  background: #fff;
+  border: 1px solid #cfcfcf;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  padding: 6px;
+  border-radius: 6px;
+  z-index: 50;
+  min-width: 160px;
+}
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  border-radius: 4px;
+}
+.menu-item:hover { background: #f4f6f8; }
+.menu-item.active { background: #eef3ff; color: #2f6df6; }
+.menu-section {
+  font-size: 11px;
+  color: #8a8f96;
+  padding: 4px 8px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.menu-divider { height: 1px; background: #eee; margin: 6px 0; }
+
+/* เส้นใต้เดียว */
+.controls-divider {
+  border-bottom: 1px solid #000000;
+  width: 1200px;
+  margin: 4px 0 8px 189px;
+}
+
+/* ปุ่ม add task บนลิสต์ */
+.toolbar { margin: 0 189px 8px; }
+.add-inline-btn {
+  border: 1px solid #2f6df6;
+  padding: 6px 14px;
+  background: #2f6df6;
+  color: #fff;
+  border-radius: 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Empty state */
+.right { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding-top: 100px; }
+.hero { text-align: center; max-width: 360px; padding: 8px; }
+.illus { width: 150px; height: auto; }
+.hero-title { font-size: 13px; font-weight: 600; color: #444; }
+.hero-desc { color: #6b6f76; line-height: 1.6; font-size: 13px; }
+.add-btn {
+  all: unset;
+  display: inline-flex;
+  justify-content: center;
+  margin: 8px 0 0;
+  padding: 8px 36px;
+  border-radius: 0;
+  background: #2f6df6;
+  font-weight: 600;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+}
+.add-btn:hover { filter: brightness(0.97); }
+.add-btn:active { transform: translateY(1px); box-shadow: 0 2px 0 rgba(0,0,0,.18); }
+
+/* ฟอร์ม */
+.form-wrap { margin: 12px 0 0 189px; }
+.task-card {
+  position: relative;
+  width: 360px;
+  border: 1px solid #cfcfcf;
+  padding: 12px;
+  border-radius: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.task-card input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #cfcfcf;
+  margin: 8px 0;
+  outline: none;
+  font-size: 14px;
+  border-radius: 0;
+  box-sizing: border-box;
+}
+.date-input { width: 100%; padding: 10px; border: 1px solid #cfcfcf; margin: 8px 0; outline: none; font-size: 14px; border-radius: 0; box-sizing: border-box; background: #fff; color: #333; }
+.date-input:focus { border-color: #2f6df6; outline: none; }
+.row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+.btn-cancel {
+  background: #e6e6e6;
+  border: 1px solid #cfcfcf;
+  padding: 6px 14px;
+  cursor: pointer;
+  border-radius: 0;
+  font-size: 13px;
+  color: #272727;
+  margin-bottom: 8px;
+}
+.btn-primary {
+  background: #2f6df6;
+  color: #fff;
+  border: 1px solid #2f6df6;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 0;
+  font-size: 13px;
+  margin-bottom: 8px;
+  margin-left: 4px;
+}
+
+/* Trigger tag dropdown ให้ดูเหมือน input */
+.input-like {
+  all: unset;
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  height: 40px;
+  border: 1px solid #cfcfcf;
+  margin: 8px 0;
+  font-size: 14px;
+  background: #fff !important;
+  color: #333;
+  border-radius: 0;
+  cursor: pointer;
+}
+.input-like:focus { border-color: #2f6df6; }
+.input-like.placeholder { color: #8a8f96; font-size: 15px; }
+
+/* Tag dropdown */
+.tagdd { position: relative; width: 100%; }
+.tagdd-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #cfcfcf;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  z-index: 30;
+  padding: 8px;
+}
+.tagdd-addrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tagdd-input { flex: 1; height: 40px; padding: 0 10px; border: 1px solid #cfcfcf; font-size: 14px; box-sizing: border-box; background: #fff; border-radius: 0; }
+.tagdd-addbtn {
+  height: 40px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2f6df6;
+  color: #fff;
+  font-size: 14px;
+  border: 1px solid #2f6df6;
+  cursor: pointer;
+  box-sizing: border-box;
+  border-radius: 0;
+}
+.tagdd-list { max-height: 180px; overflow: auto; padding: 4px; }
+.tagdd-empty { color: #8a8f96; text-align: center; padding: 6px; }
+
+/* ปุ่มแท็กในลิสต์ */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #2f6df6;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 0;
+  cursor: pointer;
+  border: 1px solid #2f6df6;
+}
+.tag-pill.active { filter: brightness(0.92); }
+.tag-pill-text { font-size: 13px; }
+
+
+.tag-pill-x-in {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  width: 22px;
+  height: 22px;
+  border-left: 1px solid rgba(255,255,255,.35);
+  border-radius: 0;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+}
+.tag-pill-x-in.disabled {
+  opacity: .5;
+  pointer-events: none;
+}
+
+.list-wrap { margin: 8px 189px 24px; }
+.todo-list { list-style: none; padding: 0; margin: 8px 0; border-top: 0; }
+.todo-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e6e6e6; }
+.todo-row .left { display: flex; align-items: flex-start; gap: 10px; }
+.todo-title { font-weight: 600; color: #222; margin-bottom: 2px; }
+.todo-title.done { color: #8a8f96; text-decoration: line-through; }
+.todo-meta { display: flex; gap: 14px; align-items: center; color: #6b6f76; font-size: 13px; }
+.tag-pill-sm { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 10px; background: #f0f3ff; color: #2f6df6; border: 1px solid #d8e0ff; }
+.due { display: inline-flex; align-items: center; gap: 6px; }
+.actions { display: flex; gap: 10px; }
+.icon-btn { all: unset; cursor: pointer; padding: 2px 4px; font-size: 16px; line-height: 1; }
+.icon-btn.edit { color: #2f6df6; }
+.icon-btn.del { color: #e53935; }
+
+button { appearance: none; -webkit-appearance: none; background: none; }
+
+
+button,
+.input-like,
+.task-card input,
+.date-input,
+.tagdd-input,
+.tagdd-addbtn,
+.tag-pill,
+.tag-pill-x-in,
+.add-btn,
+.add-inline-btn,
+.btn-primary,
+.btn-cancel {
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+}
+
+button,
+.tagdd-addbtn,
+.tag-pill,
+.input-like {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+.add-inline-btn,
+.add-btn,
+.btn-primary,
+.tagdd-addbtn,
+.tag-pill {
+  background: #2f6df6 !important;
+  color: #fff !important;
+  border: 1px solid #2f6df6 !important;
+}
+
+.btn-cancel {
+  background: #e6e6e6 !important;
+  color: #272727 !important;
+  border: 1px solid #cfcfcf !important;
+}
+
+.input-like {
+  background: #fff !important;
+  border: 1px solid #cfcfcf !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.input-like:focus,
+.task-card input:focus,
+.date-input:focus,
+.tagdd-input:focus {
+  border-color: #2f6df6 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+button:focus,
+button:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.tag-pill-x-in[disabled] {
+  opacity: .5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
