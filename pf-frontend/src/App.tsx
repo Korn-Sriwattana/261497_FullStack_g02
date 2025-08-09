@@ -319,7 +319,7 @@ export default function App() {
         {/* Header with Auth */}
 
       <div className="header">
-        <h1 className="title">Todo List</h1>
+        <h1 className="title">Todo List (G02)</h1>
 
         <div>
           {authUser ? (
