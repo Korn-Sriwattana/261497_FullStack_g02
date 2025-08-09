@@ -110,7 +110,6 @@ export default function App() {
       await fetchMe();
       setAuthOpen(false);
       setAuthPassword("");
-      // โหลดข้อมูลหลังล็อกอิน (ถ้า backend ปกป้องด้วย auth)
       await fetchAll();
     } catch (e: any) {
       alert(e?.message || "Login failed");
@@ -123,7 +122,7 @@ export default function App() {
         credentials: "include",
       });
       setAuthUser(null);
-      await fetchAll(); // เคลียร์ข้อมูล/รีโหลดตามความเหมาะสม
+      await fetchAll();
     } catch {
       // ignore
     }
@@ -144,14 +143,13 @@ export default function App() {
       setAllTodos(todosData);
       setTags(tagsData);
     } catch {
-      // เงียบไว้ก่อน
+      // silent
     }
   };
 
   useEffect(() => {
     if (fetchedOnce.current) return;
     fetchedOnce.current = true;
-    // ดึง me ก่อน เพื่อให้ cookie พร้อม แล้วค่อยโหลด todo/tags
     fetchMe().finally(fetchAll);
   }, []);
 
@@ -334,13 +332,23 @@ export default function App() {
         <div>
           {authUser ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>Hi, {authUser.username}</span>
-              <button className="btn-primary" onClick={doLogout}>
+              <span data-cy="auth-greeting">Hi, {authUser.username}</span>
+              <button
+                className="btn-primary"
+                onClick={doLogout}
+                data-cy="auth-logout"
+                title="Logout"
+              >
                 🚪 Logout
               </button>
             </div>
           ) : (
-            <button className="btn-primary" onClick={() => setAuthOpen(true)}>
+            <button
+              className="btn-primary"
+              onClick={() => setAuthOpen(true)}
+              data-cy="auth-open"
+              title="Login / Register"
+            >
               🔐 Login / Register
             </button>
           )}
@@ -378,6 +386,7 @@ export default function App() {
               value={authUsername}
               onChange={(e) => setAuthUsername(e.target.value)}
               className="input"
+              data-cy="auth-username"
             />
             <input
               type="password"
@@ -385,15 +394,28 @@ export default function App() {
               value={authPassword}
               onChange={(e) => setAuthPassword(e.target.value)}
               className="input"
+              data-cy="auth-password"
             />
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={doRegister} className="btn-primary">
+              <button
+                onClick={doRegister}
+                className="btn-primary"
+                data-cy="auth-register"
+              >
                 📝 Register
               </button>
-              <button onClick={doLogin} className="btn-primary">
+              <button
+                onClick={doLogin}
+                className="btn-primary"
+                data-cy="auth-login"
+              >
                 🔓 Login
               </button>
-              <button onClick={() => setAuthOpen(false)} className="btn-cancel">
+              <button
+                onClick={() => setAuthOpen(false)}
+                className="btn-cancel"
+                data-cy="auth-close"
+              >
                 ✖ Close
               </button>
             </div>
