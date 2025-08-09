@@ -1,9 +1,6 @@
 before(() => {
   const url = Cypress.env("BACKEND_URL");
-  cy.request({
-    method: "POST",
-    url: `${url}/todo/all`,
-  });
+  cy.request({ method: "POST", url: `${url}/todo/all` });
 });
 
 beforeEach(() => {
@@ -19,59 +16,44 @@ describe("Backend", () => {
 
   it("checks CORS disabled", () => {
     const url = Cypress.env("BACKEND_URL");
-    cy.request({
-      method: "GET",
-      url: `${url}/todo`,
-    }).then((res) => {
-      // cy.log(JSON.stringify(res));
+    cy.request({ method: "GET", url: `${url}/todo` }).then((res) => {
       expect(res.headers).to.not.have.property("access-control-allow-origin");
     });
   });
 
   it("checks get response", () => {
     const url = Cypress.env("BACKEND_URL");
-    cy.request({
-      method: "GET",
-      url: `${url}/todo`,
-    }).then((res) => {
+    cy.request({ method: "GET", url: `${url}/todo` }).then((res) => {
       expect(res.body).to.be.a("array");
     });
   });
 
-  it("creates todo", () => {
+  it("creates todo (no owner when not logged in)", () => {
     const url = Cypress.env("BACKEND_URL");
     cy.request({
       method: "PUT",
       url: `${url}/todo`,
-      body: {
-        todoText: "New Todo",
-      },
+      body: { todoText: "New Todo" },
     }).then((res) => {
-      cy.log(JSON.stringify(res.body));
       expect(res.body).to.have.all.keys("msg", "data");
       expect(res.body.data).to.include.all.keys("id", "todoText");
+      expect(res.body.data.ownerId).to.eq(null);
     });
   });
 
   it("deletes todo", () => {
     const url = Cypress.env("BACKEND_URL");
-
     cy.request({
       method: "PUT",
       url: `${url}/todo`,
-      body: {
-        todoText: "New Todo",
-      },
+      body: { todoText: "New Todo" },
     }).then((res) => {
       const todo = res.body.data;
       cy.request({
         method: "DELETE",
         url: `${url}/todo`,
-        body: {
-          id: todo.id,
-        },
+        body: { id: todo.id },
       }).then((res) => {
-        cy.log(JSON.stringify(res.body));
         expect(res.body).to.have.all.keys("msg", "data");
         expect(res.body.data).to.all.keys("id");
       });
@@ -80,33 +62,23 @@ describe("Backend", () => {
 
   it("updates todo", () => {
     const url = Cypress.env("BACKEND_URL");
-
     cy.request({
       method: "PUT",
       url: `${url}/todo`,
-      body: {
-        todoText: "New Todo",
-      },
+      body: { todoText: "New Todo" },
     }).then((res) => {
       const todo = res.body.data;
-      cy.wrap(todo.id).as("currentId"); // Storing id for using later in the chain
+      cy.wrap(todo.id).as("currentId");
       cy.request({
         method: "PATCH",
         url: `${url}/todo`,
-        body: {
-          id: todo.id,
-          todoText: "Updated Text",
-        },
-      }).then((res) => {
-        cy.request({
-          method: "GET",
-          url: `${url}/todo`,
-        }).then(function (res) {
-          // Notice that arrow function is not used here due to "this" issue
-          const currentId = this.currentId; // Get value from context
+        body: { id: todo.id, todoText: "Updated Text" },
+      }).then(() => {
+        cy.request({ method: "GET", url: `${url}/todo` }).then(function (res) {
+          const currentId = this.currentId;
           const todos = res.body;
-          const todo = todos.find((el: any) => el.id === currentId);
-          expect(todo.todoText).to.equal("Updated Text");
+          const t = todos.find((el: any) => el.id === currentId);
+          expect(t.todoText).to.equal("Updated Text");
         });
       });
     });
@@ -139,14 +111,14 @@ describe("Backend", () => {
     cy.request({
       method: "POST",
       url: `${url}/tags`,
-      body: { name: `TempTag_${Date.now()}` }, // ให้ชื่อ tag เป็นเอกลักษณ์ป้องกันซ้ำ
+      body: { name: `TempTag_${Date.now()}` },
     }).then((res) => {
       const tagId = res.body.data.id;
       cy.request({
         method: "DELETE",
-        url: `${url}/tags/${tagId}`, // ลบด้วย tagId
+        url: `${url}/tags/${tagId}`,
       }).then((res) => {
-        expect(res.body).to.have.all.keys("msg", "data"); // เช็ค response structure
+        expect(res.body).to.have.all.keys("msg", "data");
         expect(res.body.data.id).to.equal(tagId);
       });
     });
@@ -162,14 +134,10 @@ describe("Backend", () => {
       body: { name: uniqueTagName },
     }).then((res) => {
       const tagId = res.body.data.id;
-
       cy.request({
         method: "PUT",
         url: `${url}/todo`,
-        body: {
-          todoText: "Todo with Tag",
-          tagId,
-        },
+        body: { todoText: "Todo with Tag", tagId },
       }).then((res) => {
         expect(res.body).to.have.all.keys("msg", "data");
         expect(res.body.data).to.include.all.keys("id", "todoText", "tagId");
@@ -189,10 +157,7 @@ describe("Backend", () => {
       cy.request({
         method: "PUT",
         url: `${url}/todo`,
-        body: {
-          todoText: "Filtered todo",
-          tagId,
-        },
+        body: { todoText: "Filtered todo", tagId },
       }).then(() => {
         cy.request({
           method: "GET",
@@ -200,51 +165,24 @@ describe("Backend", () => {
           qs: { tagId },
         }).then(({ body: todos }) => {
           expect(todos).to.be.an("array").that.is.not.empty;
-          todos.forEach((todo: any) => {
-            expect(todo.tagId).to.eq(tagId);
-          });
+          todos.forEach((todo: any) => expect(todo.tagId).to.eq(tagId));
         });
-      });
-    });
-  });
-
-  it("deletes a tag if no todos use it", () => {
-    const url = Cypress.env("BACKEND_URL");
-
-    cy.request({
-      method: "POST",
-      url: `${url}/tags`,
-      body: { name: "TempDeleteTag" },
-    }).then((tagRes) => {
-      const tagId = tagRes.body.data.id;
-
-      cy.request({
-        method: "DELETE",
-        url: `${url}/tags/${tagId}`,
-      }).then((delRes) => {
-        expect(delRes.status).to.eq(200);
-        expect(delRes.body.data.id).to.eq(tagId);
       });
     });
   });
 
   it("fails to delete tag if todos use it", () => {
     const url = Cypress.env("BACKEND_URL");
-
     cy.request({
       method: "POST",
       url: `${url}/tags`,
       body: { name: "TagUsed" },
     }).then((tagRes) => {
       const tagId = tagRes.body.data.id;
-
       cy.request({
         method: "PUT",
         url: `${url}/todo`,
-        body: {
-          todoText: "Todo using tag",
-          tagId,
-        },
+        body: { todoText: "Todo using tag", tagId },
       }).then(() => {
         cy.request({
           method: "DELETE",
@@ -254,6 +192,38 @@ describe("Backend", () => {
           expect(res.status).to.eq(400);
           expect(res.body).to.have.property("error");
         });
+      });
+    });
+  });
+
+  // =====================
+  // New: auth backend tests
+  // =====================
+  it("registers, logs in and creates owned todo", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const username = `user_${Date.now()}`;
+    const password = "p@ssw0rd";
+
+    // register
+    cy.request("POST", `${url}/auth/register`, { username, password })
+      .its("status")
+      .should("eq", 200);
+
+    // login with cookie jar
+    cy.request({
+      method: "POST",
+      url: `${url}/auth/login`,
+      body: { username, password },
+    }).then((loginRes) => {
+      expect(loginRes.body.user.username).to.eq(username);
+
+      // with cookies attached by cy.request automatically
+      cy.request({
+        method: "PUT",
+        url: `${url}/todo`,
+        body: { todoText: "Owned Todo" },
+      }).then((res) => {
+        expect(res.body.data.ownerId).to.be.a("string").and.not.be.empty;
       });
     });
   });

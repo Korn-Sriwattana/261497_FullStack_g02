@@ -4,6 +4,11 @@ import { type TodoItem, type TagItem } from "./types";
 import dayjs from "dayjs";
 import TagDropdown from "./TagDropdown";
 
+/** ============================
+ *  เพิ่ม UI auth: popup modal ง่ายๆ
+ *  ============================ */
+type AuthUser = { id: string; username: string } | null;
+
 function App() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [allTodos, setAllTodos] = useState<TodoItem[]>([]);
@@ -19,9 +24,16 @@ function App() {
     "ALL" | "DONE" | "UNDONE"
   >("ALL");
 
+  const [authUser, setAuthUser] = useState<AuthUser>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // ดึงสถานะ me ตอน mount
+    axios.get("/api/auth/me").then((res) => setAuthUser(res.data.user));
     fetchAllTodos();
     fetchData();
     fetchTags();
@@ -73,7 +85,7 @@ function App() {
     };
     const method = mode === "ADD" ? "put" : "patch";
     axios
-      .request({ url: "/api/todo", method, data })
+      .request({ url: "/api/todo", method, data, withCredentials: true })
       .then(async () => {
         setInputText("");
         setDueDate("");
@@ -83,19 +95,19 @@ function App() {
         await fetchAllTodos();
         await fetchData();
       })
-      .catch((err) => alert(err));
+      .catch((err) => alert(err?.response?.data?.message || "Request failed"));
   }
 
   function handleDelete(id: string) {
     axios
-      .delete("/api/todo", { data: { id } })
+      .delete("/api/todo", { data: { id }, withCredentials: true })
       .then(async () => {
         await fetchAllTodos();
         await fetchData();
         setMode("ADD");
         setInputText("");
       })
-      .catch((err) => alert(err));
+      .catch((err) => alert(err?.response?.data?.message || "Request failed"));
   }
 
   function handleCancel() {
@@ -108,9 +120,48 @@ function App() {
 
   function toggleIsDone(id: string, isDone: boolean) {
     axios
-      .patch("/api/todo/status", { id, isDone })
+      .patch("/api/todo/status", { id, isDone }, { withCredentials: true })
       .then(() => fetchData())
       .catch(() => alert("Failed to update status"));
+  }
+
+  async function doRegister() {
+    try {
+      await axios.post(
+        "/api/auth/register",
+        { username: authUsername.trim(), password: authPassword },
+        { withCredentials: true }
+      );
+      alert("Registered! Now login.");
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "Register failed");
+    }
+  }
+
+  async function doLogin() {
+    try {
+      const res = await axios.post(
+        "/api/auth/login",
+        { username: authUsername.trim(), password: authPassword },
+        { withCredentials: true }
+      );
+      setAuthUser(res.data.user);
+      setAuthOpen(false);
+      setAuthPassword("");
+      await fetchData();
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "Login failed");
+    }
+  }
+
+  async function doLogout() {
+    try {
+      await axios.post("/api/auth/logout", {}, { withCredentials: true });
+      setAuthUser(null);
+      await fetchData();
+    } catch {
+      // ignore
+    }
   }
 
   const sortedTodos = [...todos].sort(
@@ -127,9 +178,110 @@ function App() {
         alignItems: "center",
       }}
     >
-      <header>
+      <header
+        style={{
+          width: "100%",
+          maxWidth: "800px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "0.75rem",
+        }}
+      >
         <h1 style={{ fontSize: "2rem" }}>📋 Todo App</h1>
+
+        <div>
+          {authUser ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span data-cy="auth-greeting">Hi, {authUser.username}</span>
+              <button
+                onClick={doLogout}
+                style={secondaryButtonStyle}
+                data-cy="auth-logout"
+                title="Logout"
+              >
+                🚪 Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAuthOpen(true)}
+              style={buttonStyle}
+              data-cy="auth-open"
+            >
+              🔐 Login / Register
+            </button>
+          )}
+        </div>
       </header>
+
+      {/* Auth Modal */}
+      {authOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 16,
+              width: 360,
+              boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>🔑 Authentication</h3>
+            <input
+              placeholder="Username"
+              value={authUsername}
+              onChange={(e) => setAuthUsername(e.target.value)}
+              style={inputStyle}
+              data-cy="auth-username"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              style={inputStyle}
+              data-cy="auth-password"
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={doRegister}
+                style={buttonStyle}
+                data-cy="auth-register"
+              >
+                📝 Register
+              </button>
+              <button
+                onClick={doLogin}
+                style={buttonStyle}
+                data-cy="auth-login"
+              >
+                🔓 Login
+              </button>
+              <button
+                onClick={() => setAuthOpen(false)}
+                style={secondaryButtonStyle}
+                data-cy="auth-close"
+              >
+                ✖ Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main style={{ width: "100%", maxWidth: "800px" }}>
         <div
@@ -378,16 +530,11 @@ const secondaryButtonStyle: React.CSSProperties = {
 function formatDateTime(dateStr: string) {
   if (!dayjs(dateStr).isValid()) return { date: "N/A", time: "N/A" };
   const dt = dayjs(dateStr);
-  return {
-    date: dt.format("DD/MM/YYYY"),
-    time: dt.format("HH:mm"),
-  };
+  return { date: dt.format("DD/MM/YYYY"), time: dt.format("HH:mm") };
 }
-
 function compareDate(a: TodoItem, b: TodoItem) {
   return dayjs(a.createdAt).isBefore(dayjs(b.createdAt)) ? -1 : 1;
 }
-
 function compareDueDate(a: TodoItem, b: TodoItem) {
   if (!a.dueDate) return 1;
   if (!b.dueDate) return -1;
