@@ -19,7 +19,11 @@ function formatDate(d?: string | null) {
   if (!d) return "";
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return "";
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+  return dt.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+  });
 }
 
 export default function App() {
@@ -47,7 +51,9 @@ export default function App() {
 
   // ===== Filters / Sort =====
   const [sortBy, setSortBy] = useState<"createdAt" | "dueDate">("createdAt");
-  const [statusFilter, setStatusFilter] = useState<"all" | "done" | "notdone">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "done" | "notdone">(
+    "all"
+  );
   const [tagFilterId, setTagFilterId] = useState<string>("");
 
   const [openMenu, setOpenMenu] = useState<"" | "sort" | "filter">("");
@@ -78,7 +84,10 @@ export default function App() {
         method: "POST",
         headers: FETCH_JSON,
         credentials: "include",
-        body: JSON.stringify({ username: authUsername.trim(), password: authPassword }),
+        body: JSON.stringify({
+          username: authUsername.trim(),
+          password: authPassword,
+        }),
       });
       if (!res.ok) throw new Error("Register failed");
       alert("Registered! Now login.");
@@ -92,7 +101,10 @@ export default function App() {
         method: "POST",
         headers: FETCH_JSON,
         credentials: "include",
-        body: JSON.stringify({ username: authUsername.trim(), password: authPassword }),
+        body: JSON.stringify({
+          username: authUsername.trim(),
+          password: authPassword,
+        }),
       });
       if (!res.ok) throw new Error("Login failed");
       await fetchMe();
@@ -125,7 +137,10 @@ export default function App() {
         fetch(`${API}/tags`, { cache: "no-store", credentials: "include" }),
       ]);
       if (!todoRes.ok || !tagRes.ok) throw new Error("fetch failed");
-      const [todosData, tagsData] = await Promise.all([todoRes.json(), tagRes.json()]);
+      const [todosData, tagsData] = await Promise.all([
+        todoRes.json(),
+        tagRes.json(),
+      ]);
       setAllTodos(todosData);
       setTags(tagsData);
     } catch {
@@ -172,8 +187,12 @@ export default function App() {
     return da - db;
   }
   function compareByDue(a: Todo, b: Todo) {
-    const ad = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
-    const bd = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+    const ad = a.dueDate
+      ? new Date(a.dueDate).getTime()
+      : Number.POSITIVE_INFINITY;
+    const bd = b.dueDate
+      ? new Date(b.dueDate).getTime()
+      : Number.POSITIVE_INFINITY;
     return ad - bd;
   }
 
@@ -187,7 +206,8 @@ export default function App() {
     return list;
   }, [allTodos, tagFilterId, statusFilter, sortBy]);
 
-  const getTagName = (id?: string | null) => (id ? tags.find((x) => x.id === id)?.name ?? "" : "");
+  const getTagName = (id?: string | null) =>
+    id ? tags.find((x) => x.id === id)?.name ?? "" : "";
 
   /** ===== Actions ===== */
   const resetForm = () => {
@@ -200,7 +220,10 @@ export default function App() {
 
   const refreshTodos = async () => {
     try {
-      const res = await fetch(`${API}/todo`, { cache: "no-store", credentials: "include" });
+      const res = await fetch(`${API}/todo`, {
+        cache: "no-store",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error(String(res.status));
       const data: Todo[] = await res.json();
       setAllTodos(data);
@@ -281,7 +304,10 @@ export default function App() {
   };
   const onDeleteTag = async (id: string) => {
     try {
-      const res = await fetch(`${API}/tags/${id}`, { method: "DELETE", credentials: "include" });
+      const res = await fetch(`${API}/tags/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
       const json = await res.json();
       if (!res.ok) throw new Error();
       setTags((prev) => prev.filter((t) => t.id !== id));
@@ -293,18 +319,10 @@ export default function App() {
   return (
     <main>
       {/* Header with Auth */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "center",
-          maxWidth: 960,
-          margin: "12px auto",
-          padding: "0 12px",
-        }}
-      >
-        <h1 className="title">Todo App</h1>
+
+      <div className="header">
+        <h1 className="title">Todo List</h1>
+
         <div>
           {authUser ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -387,7 +405,11 @@ export default function App() {
           sort by
         </div>
         {openMenu === "sort" && (
-          <div className="menu" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <div
+            className="menu"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               className={`menu-item ${sortBy === "createdAt" ? "active" : ""}`}
               onClick={() => {
@@ -419,7 +441,11 @@ export default function App() {
           filter
         </div>
         {openMenu === "filter" && (
-          <div className="menu" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+          <div
+            className="menu"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="menu-section">status</div>
             <button
               className={`menu-item ${statusFilter === "all" ? "active" : ""}`}
@@ -440,7 +466,9 @@ export default function App() {
               done
             </button>
             <button
-              className={`menu-item ${statusFilter === "notdone" ? "active" : ""}`}
+              className={`menu-item ${
+                statusFilter === "notdone" ? "active" : ""
+              }`}
               onClick={() => {
                 setStatusFilter("notdone");
                 setOpenMenu("");
@@ -531,7 +559,11 @@ export default function App() {
               >
                 cancel
               </button>
-              <button data-cy="submit" className="btn-primary" onClick={handleSaveTask}>
+              <button
+                data-cy="submit"
+                className="btn-primary"
+                onClick={handleSaveTask}
+              >
                 {mode === "ADD" ? "add task" : "update"}
               </button>
             </div>
@@ -550,7 +582,10 @@ export default function App() {
                   onChange={(e) => handleToggleDone(t.id, e.target.checked)}
                 />
                 <div className="info">
-                  <div className={`todo-title ${t.isDone ? "done" : ""}`} data-cy="todo-item">
+                  <div
+                    className={`todo-title ${t.isDone ? "done" : ""}`}
+                    data-cy="todo-item"
+                  >
                     {t.todoText}
                   </div>
                   <div className="todo-meta">
@@ -597,8 +632,14 @@ export default function App() {
             <div className="hero">
               <img className="illus" src="/inbox-illus.png" alt="" />
               <h2 className="hero-title">Add your first todo</h2>
-              <p className="hero-desc">Create a task to get started. You can always organize it later.</p>
-              <button className="add-btn" data-cy="add-task-btn" onClick={() => setShowForm(true)}>
+              <p className="hero-desc">
+                Create a task to get started. You can always organize it later.
+              </p>
+              <button
+                className="add-btn"
+                data-cy="add-task-btn"
+                onClick={() => setShowForm(true)}
+              >
                 + Add task
               </button>
             </div>
