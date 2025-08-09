@@ -1,233 +1,149 @@
-import { useState, useEffect, useRef } from "react";
-import { type TagItem } from "./types";
+import { useEffect, useRef, useState } from "react";
 
-function TagDropdown({
+export interface TagItem {
+  id: string;
+  name: string;
+}
+
+interface Props {
+  tags: TagItem[];
+  selectedTagId: string;
+  usedTagIds: string[];
+  onSelectTag: (id: string) => void;
+  onAddTag: (name: string) => void | Promise<void>;
+  onDeleteTag: (id: string) => void | Promise<void>;
+}
+
+export default function TagDropdown({
   tags,
   selectedTagId,
   usedTagIds,
   onSelectTag,
   onAddTag,
   onDeleteTag,
-}: {
-  tags: TagItem[];
-  selectedTagId: string;
-  usedTagIds: string[];
-  onSelectTag: (id: string) => void;
-  onAddTag: (name: string) => void;
-  onDeleteTag: (id: string) => void;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+}: Props) {
+  const [open, setOpen] = useState(false);
+  const [newTag, setNewTag] = useState("");
+  const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // ปิด dropdown เมื่อคลิกนอก
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+    function onDocClick(e: MouseEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
   }, []);
 
-  function handleAdd() {
-    const name = newTagName.trim();
+  const selectedName =
+    selectedTagId ? tags.find((t) => t.id === selectedTagId)?.name ?? "" : "";
+
+  const handleAdd = async () => {
+    const name = newTag.trim();
     if (!name) return;
-    onAddTag(name);
-    setNewTagName("");
-  }
+    await onAddTag(name);
+    setNewTag("");
+  };
 
   return (
-    <div
-      ref={dropdownRef}
-      data-cy="tag-select"
-      style={{
-        position: "relative",
-        width: 220,
-        height: "100%",
-        userSelect: "none",
-      }}
-    >
-      {/* ปุ่มแสดง tag ที่เลือก และเปิด dropdown */}
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          border: "1px solid #ccc",
-          height: "100%",
-          padding: "8px",
-          borderRadius: 4,
-          display: "flex",
-          alignItems: "center", // จัดกลางแนวตั้ง
-          justifyContent: "flex-start", // จัดชิดซ้าย
-          cursor: "pointer",
-          backgroundColor: "#fff",
+    <div className="tagdd" ref={wrapRef}>
+      <button
+        type="button"
+        className={`input-like ${selectedName ? "" : "placeholder"}`}
+        data-cy="tag-select"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
         }}
       >
-        {selectedTagId
-          ? tags.find((t) => t.id === selectedTagId)?.name
-          : "🏷️Tag (optional)"}
-      </div>
+        {selectedName || "Select tag"}
+      </button>
 
-      {isOpen && (
+      {open && (
         <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            width: "100%",
-            border: "1px solid #ccc",
-            borderRadius: 4,
-            backgroundColor: "#fff",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-            zIndex: 1000,
-            padding: 8,
-          }}
+          className="tagdd-panel"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* Input + ปุ่มเพิ่ม */}
-          <div style={{ display: "flex", marginBottom: 8, gap: 6 }}>
+          <div className="tagdd-addrow">
             <input
-              type="text"
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              placeholder="New tag"
+              className="tagdd-input"
               data-cy="add-tag-input"
-              style={{
-                flexGrow: 1,
-                padding: 6,
-                borderRadius: 4,
-                height: 60,
-                border: "1px solid #ccc",
-              }}
+              placeholder="New tag name"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAdd();
-                }
+                if (e.key === "Enter") handleAdd();
               }}
             />
             <button
-              onClick={handleAdd}
+              className="tagdd-addbtn"
               data-cy="tag-add-button"
-              style={{
-                padding: "6px 12px",
-                backgroundColor: "#28a745",
-                height: 60,
-                width: 80,
-                border: "none",
-                borderRadius: 4,
-                color: "white",
-                cursor: "pointer",
-              }}
+              onClick={handleAdd}
             >
               Add
             </button>
           </div>
 
-          {/* รายการ tag */}
-          <ul
-            style={{
-              listStyle: "none",
-              margin: 0,
-              padding: 0,
-              maxHeight: 200,
-              overflowY: "auto",
-              borderTop: "1px solid #eee",
-            }}
-          >
-            {tags.map((tag) => {
-              // const isUsed = usedTagIds.includes(tag.id);
+          <ul className="tagdd-list">
+            {tags.length === 0 && <li className="tagdd-empty">No tags</li>}
+
+            {tags.map((t) => {
+              const active = selectedTagId === t.id;
+              const used = usedTagIds.includes(t.id);
+
+              const disabledAttr = used ? ({ disabled: true } as any) : ({} as any);
+
               return (
                 <li
-                  key={tag.id}
-                  data-cy={`tag-item-${tag.id}`}
+                  key={t.id}
+                  className="tagdd-item"
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
+                    gap: 8,
                     alignItems: "center",
-                    padding: "6px 10px",
-                    cursor: "pointer",
-                    backgroundColor:
-                      tag.id === selectedTagId ? "#007bff" : "transparent",
-                    color: tag.id === selectedTagId ? "white" : "black",
-                    borderRadius: 4,
-                    marginBottom: 2,
-                    userSelect: "none",
-                  }}
-                  onClick={() => {
-                    onSelectTag(tag.id);
-                    setIsOpen(false);
-                  }}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onSelectTag(tag.id);
-                      setIsOpen(false);
-                    }
+                    marginBottom: 6,
                   }}
                 >
-                  <span style={{ flexGrow: 1 }}>{tag.name}</span>
                   <button
-                    data-cy={`delete-tag-${tag.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const isUsed = usedTagIds.includes(tag.id);
-                      if (isUsed) {
-                        alert(
-                          `Cannot delete tag "${tag.name}" because it is in use.`
-                        );
-                        return;
-                      }
-                      onDeleteTag(tag.id);
-                      if (tag.id === selectedTagId) {
-                        onSelectTag("");
-                      }
+                    type="button"
+                    className={`tag-pill ${active ? "active" : ""}`}
+                    data-cy={`tag-item-${t.id}`}
+                    onClick={() => {
+                      onSelectTag(t.id);
+                      setOpen(false);
                     }}
-                    style={{
-                      background: "transparent",
-                      border: "none",
-                      color:
-                        tag.id === selectedTagId
-                          ? "white"
-                          : usedTagIds.includes(tag.id)
-                          ? "#999"
-                          : "red",
-                      fontWeight: "bold",
-                      cursor: usedTagIds.includes(tag.id)
-                        ? "not-allowed"
-                        : "pointer",
-                      fontSize: 16,
-                      marginLeft: 8,
-                    }}
-                    aria-label={`Delete tag ${tag.name}`}
-                    tabIndex={-1}
-                    disabled={usedTagIds.includes(tag.id)}
                   >
-                    ×
+                    <span className="tag-pill-text">{t.name}</span>
+
+                    <span
+                      {...disabledAttr} // <- ทำให้มี attribute disabled จริงใน DOM เมื่อ used === true
+                      className={`tag-pill-x-in ${used ? "disabled" : ""}`}
+                      title={used ? "This tag is used by todos" : "Delete tag"}
+                      role="button"
+                      tabIndex={0}
+                      data-cy={`tag-item-del-${t.id}`}
+                      aria-disabled={used}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!used) onDeleteTag(t.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (!used && (e.key === "Enter" || e.key === " ")) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onDeleteTag(t.id);
+                        }
+                      }}
+                    >
+                      ×
+                    </span>
                   </button>
                 </li>
               );
             })}
-            {tags.length === 0 && (
-              <li
-                style={{
-                  color: "#999",
-                  textAlign: "center",
-                  padding: 8,
-                }}
-              >
-                No tags available
-              </li>
-            )}
           </ul>
         </div>
       )}
     </div>
   );
 }
-
-export default TagDropdown;
