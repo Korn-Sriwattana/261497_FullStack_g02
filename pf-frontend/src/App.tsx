@@ -1,399 +1,446 @@
-import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-import { type TodoItem, type TagItem } from "./types";
-import dayjs from "dayjs";
+import "./App.css";
+import { useEffect, useMemo, useRef, useState } from "react";
 import TagDropdown from "./TagDropdown";
+import type { TagItem } from "./TagDropdown";
 
-function App() {
-  const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [allTodos, setAllTodos] = useState<TodoItem[]>([]);
-  const [inputText, setInputText] = useState("");
-  const [mode, setMode] = useState<"ADD" | "EDIT">("ADD");
-  const [curTodoId, setCurTodoId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [sortOption, setSortOption] = useState<"created" | "due">("created");
+interface Todo {
+  id: string;
+  todoText: string;
+  isDone: boolean;
+  tagId?: string | null;
+  dueDate?: string | null;
+  createdAt?: string | null;
+}
+
+function formatDate(d?: string | null) {
+  if (!d) return "";
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return "";
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
+}
+
+export default function App() {
+  const API = "/api";
+
+  const [allTodos, setAllTodos] = useState<Todo[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
-  const [selectedTagId, setSelectedTagId] = useState<string>("");
-  const [filterTagId, setFilterTagId] = useState<string>("");
-  const [showStatusFilter, setShowStatusFilter] = useState<
-    "ALL" | "DONE" | "UNDONE"
-  >("ALL");
 
-  const dateInputRef = useRef<HTMLInputElement>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [mode, setMode] = useState<"ADD" | "EDIT">("ADD");
+  const [editingId, setEditingId] = useState("");
+
+  const [taskName, setTaskName] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [selectedTagId, setSelectedTagId] = useState<string>("");
+
+  const [sortBy, setSortBy] = useState<"createdAt" | "dueDate">("createdAt");
+  const [statusFilter, setStatusFilter] = useState<"all" | "done" | "notdone">("all");
+  const [tagFilterId, setTagFilterId] = useState<string>("");
+
+  const [openMenu, setOpenMenu] = useState<"" | "sort" | "filter">("");
+
+  const formRef = useRef<HTMLDivElement | null>(null);
+  const firstInputRef = useRef<HTMLInputElement | null>(null);
+
+  const fetchedOnce = useRef(false);
+  const controlsRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchAll = async () => {
+    const [todoRes, tagRes] = await Promise.all([
+      fetch(`${API}/todo`, { cache: "no-store" }),
+      fetch(`${API}/tags`, { cache: "no-store" }),
+    ]);
+    if (!todoRes.ok || !tagRes.ok) throw new Error("fetch failed");
+    const [todosData, tagsData] = await Promise.all([todoRes.json(), tagRes.json()]);
+    setAllTodos(todosData);
+    setTags(tagsData);
+  };
 
   useEffect(() => {
-    fetchAllTodos();
-    fetchData();
-    fetchTags();
+    if (fetchedOnce.current) return;
+    fetchedOnce.current = true;
+    fetchAll().catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [filterTagId]);
-
-  async function fetchAllTodos() {
-    try {
-      const res = await axios.get<TodoItem[]>("/api/todo");
-      setAllTodos(res.data);
-    } catch {
-      alert("Failed to fetch all todos");
+    function onDocClick(e: MouseEvent) {
+      if (!controlsRef.current?.contains(e.target as Node)) setOpenMenu("");
     }
-  }
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
 
-  async function fetchData() {
-    const url = filterTagId ? `/api/todo?tagId=${filterTagId}` : "/api/todo";
-    try {
-      const res = await axios.get<TodoItem[]>(url);
-      setTodos(res.data);
-    } catch {
-      alert("Failed to fetch todos");
+  useEffect(() => {
+    if (showForm && firstInputRef.current) firstInputRef.current.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setShowForm(false);
+        resetForm();
+      }
     }
+    if (showForm) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showForm]);
+
+  const usedTagIds = useMemo(() => {
+    const ids = allTodos.map((t) => t.tagId).filter(Boolean) as string[];
+    return Array.from(new Set(ids));
+  }, [allTodos]);
+
+  function compareByCreated(a: Todo, b: Todo) {
+    const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return da - db;
+  }
+  function compareByDue(a: Todo, b: Todo) {
+    const ad = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
+    const bd = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+    return ad - bd;
   }
 
-  async function fetchTags() {
-    try {
-      const res = await axios.get<TagItem[]>("/api/tags");
-      setTags(res.data);
-    } catch {
-      alert("Failed to fetch tags");
-    }
-  }
+  const visibleTodos = useMemo(() => {
+    let list = [...allTodos];
+    if (tagFilterId) list = list.filter((t) => t.tagId === tagFilterId);
+    if (statusFilter === "done") list = list.filter((t) => t.isDone);
+    else if (statusFilter === "notdone") list = list.filter((t) => !t.isDone);
+    if (sortBy === "createdAt") list.sort(compareByCreated);
+    else list.sort(compareByDue);
+    return list;
+  }, [allTodos, tagFilterId, statusFilter, sortBy]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setInputText(e.target.value);
-  }
+  const getTagName = (id?: string | null) => (id ? tags.find((x) => x.id === id)?.name ?? "" : "");
 
-  function handleSubmit() {
-    if (!inputText) return;
-    const data = {
-      id: curTodoId,
-      todoText: inputText,
-      dueDate,
-      tagId: selectedTagId || null,
-    };
-    const method = mode === "ADD" ? "put" : "patch";
-    axios
-      .request({ url: "/api/todo", method, data })
-      .then(async () => {
-        setInputText("");
-        setDueDate("");
-        setSelectedTagId("");
-        setMode("ADD");
-        setCurTodoId("");
-        await fetchAllTodos();
-        await fetchData();
-      })
-      .catch((err) => alert(err));
-  }
-
-  function handleDelete(id: string) {
-    axios
-      .delete("/api/todo", { data: { id } })
-      .then(async () => {
-        await fetchAllTodos();
-        await fetchData();
-        setMode("ADD");
-        setInputText("");
-      })
-      .catch((err) => alert(err));
-  }
-
-  function handleCancel() {
+  const resetForm = () => {
     setMode("ADD");
-    setInputText("");
-    setCurTodoId("");
+    setEditingId("");
+    setTaskName("");
     setDueDate("");
     setSelectedTagId("");
-  }
+  };
 
-  function toggleIsDone(id: string, isDone: boolean) {
-    axios
-      .patch("/api/todo/status", { id, isDone })
-      .then(() => fetchData())
-      .catch(() => alert("Failed to update status"));
-  }
+  const refreshTodos = async () => {
+    try {
+      const res = await fetch(`${API}/todo`, { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      const data: Todo[] = await res.json();
+      setAllTodos(data);
+    } catch {}
+  };
 
-  const sortedTodos = [...todos].sort(
-    sortOption === "due" ? compareDueDate : compareDate
-  );
+  const handleSaveTask = async () => {
+    const todoText = taskName.trim();
+    if (!todoText) return;
+    const payload: any = {
+      todoText,
+      dueDate: dueDate ? `${dueDate}T00:00:00` : null,
+      tagId: selectedTagId || null,
+    };
+    if (mode === "EDIT") payload.id = editingId;
+    try {
+      const res = await fetch(`${API}/todo`, {
+        method: mode === "ADD" ? "PUT" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error();
+      resetForm();
+      setShowForm(false);
+      refreshTodos();
+    } catch {}
+  };
+
+  const handleStartEdit = (t: Todo) => {
+    setMode("EDIT");
+    setEditingId(t.id);
+    setTaskName(t.todoText ?? "");
+    setDueDate(t.dueDate ? String(t.dueDate).slice(0, 10) : "");
+    setSelectedTagId(t.tagId ?? "");
+    setShowForm(true);
+  };
+
+  const handleToggleDone = async (id: string, isDone: boolean) => {
+    try {
+      const res = await fetch(`${API}/todo/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isDone }),
+      });
+      if (!res.ok) throw new Error();
+      refreshTodos();
+    } catch {}
+  };
+
+  const handleDeleteTodo = async (id: string) => {
+    try {
+      await fetch(`${API}/todo`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      refreshTodos();
+    } catch {}
+  };
+
+  const onSelectTag = (id: string) => setSelectedTagId(id);
+  const onAddTag = async (name: string) => {
+    try {
+      const res = await fetch(`${API}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error();
+      setTags((prev) => [...prev, json.data]);
+      setSelectedTagId(json.data.id);
+    } catch {}
+  };
+  const onDeleteTag = async (id: string) => {
+    try {
+      const res = await fetch(`${API}/tags/${id}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error();
+      setTags((prev) => prev.filter((t) => t.id !== id));
+      if (selectedTagId === id) setSelectedTagId("");
+    } catch {}
+  };
 
   return (
-    <div
-      className="container"
-      style={{
-        padding: "1rem",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <header>
-        <h1 style={{ fontSize: "2rem" }}>📋 Todo App</h1>
-      </header>
+    <main>
+      <div>
+        <h1 className="title">Todo</h1>
+      </div>
 
-      <main style={{ width: "100%", maxWidth: "800px" }}>
-        {/* ✅ Input + Date + Tag + Add */}
+      {/* controls */}
+      <div className="controls" ref={controlsRef}>
         <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "0.5rem",
-            marginBottom: "1.5rem",
+          className="option-btn opt"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenMenu(openMenu === "sort" ? "" : "sort");
           }}
         >
-          <input
-            data-cy="input-text"
-            type="text"
-            onChange={handleChange}
-            value={inputText}
-            placeholder="New Todo"
-            style={{ ...inputStyle, minWidth: "200px" }}
-          />
-
-          <input
-            data-cy="due-date"
-            type="date"
-            ref={dateInputRef}
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            style={{ ...inputStyle, minWidth: "160px" }}
-          />
-
-          <TagDropdown
-            data-cy="tag-select"
-            tags={tags}
-            usedTagIds={allTodos
-              .map((todo) => todo.tagId)
-              .filter(Boolean)
-              .map(String)}
-            selectedTagId={selectedTagId}
-            onSelectTag={setSelectedTagId}
-            onAddTag={async (name) => {
-              try {
-                const res = await axios.post("/api/tags", { name });
-                setTags((prev) => [...prev, res.data.data]);
-              } catch {
-                alert("Failed to add tag");
-              }
-            }}
-            onDeleteTag={async (id) => {
-              try {
-                await axios.delete(`/api/tags/${id}`);
-                setTags((prev) => prev.filter((t) => t.id !== id));
-                await fetchAllTodos();
-                await fetchData();
-                if (filterTagId === id) setFilterTagId("");
-              } catch (error: any) {
-                const errMsg =
-                  error.response?.data?.error || "Failed to delete tag";
-                alert(errMsg);
-              }
-            }}
-          />
-
-          <button data-cy="submit" onClick={handleSubmit} style={buttonStyle}>
-            📨 {mode === "ADD" ? "Add" : "Update"}
-          </button>
-
-          {mode === "EDIT" && (
-            <button data-cy="cancel" onClick={handleCancel} style={secondaryButtonStyle}>
-              ❌ Cancel
+          sort by
+        </div>
+        {openMenu === "sort" && (
+          <div className="menu" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <button
+              className={`menu-item ${sortBy === "createdAt" ? "active" : ""}`}
+              onClick={() => {
+                setSortBy("createdAt");
+                setOpenMenu("");
+              }}
+            >
+              created
             </button>
-          )}
-        </div>
+            <button
+              className={`menu-item ${sortBy === "dueDate" ? "active" : ""}`}
+              onClick={() => {
+                setSortBy("dueDate");
+                setOpenMenu("");
+              }}
+            >
+              due date
+            </button>
+          </div>
+        )}
 
         <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "flex-end",
-            gap: "1rem",
-            marginBottom: 10,
+          className="option-btn opt"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenMenu(openMenu === "filter" ? "" : "filter");
           }}
         >
-          {/* View by Tag */}
-          <label
-            style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
-          >
-            View by Tag 🏷️
-            <select
-              data-cy="filter-tag"
-              value={filterTagId}
-              onChange={(e) => setFilterTagId(e.target.value)}
-              style={inputStyle}
-            >
-              <option value="">All Todos</option>
-              {tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>
-                  {tag.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Sort by */}
-          <label
-            style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
-          >
-            Sort by
-            <select
-              data-cy="sort-select"
-              value={sortOption}
-              onChange={(e) =>
-                setSortOption(e.target.value as "created" | "due")
-              }
-              style={inputStyle}
-            >
-              <option value="created">📅 Created</option>
-              <option value="due">📌 Due</option>
-            </select>
-          </label>
-
-          {/* ✅ Status */}
-          <label
-            style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}
-          >
-            Status
-            <select
-              value={showStatusFilter}
-              onChange={(e) =>
-                setShowStatusFilter(e.target.value as "ALL" | "DONE" | "UNDONE")
-              }
-              style={inputStyle}
-            >
-              <option value="ALL">📋 All</option>
-              <option value="DONE">✅ Done</option>
-              <option value="UNDONE">🕓 Undone</option>
-            </select>
-          </label>
+          filter
         </div>
+        {openMenu === "filter" && (
+          <div className="menu" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+            <div className="menu-section">status</div>
+            <button
+              className={`menu-item ${statusFilter === "all" ? "active" : ""}`}
+              onClick={() => {
+                setStatusFilter("all");
+                setOpenMenu("");
+              }}
+            >
+              all
+            </button>
+            <button
+              className={`menu-item ${statusFilter === "done" ? "active" : ""}`}
+              onClick={() => {
+                setStatusFilter("done");
+                setOpenMenu("");
+              }}
+            >
+              done
+            </button>
+            <button
+              className={`menu-item ${statusFilter === "notdone" ? "active" : ""}`}
+              onClick={() => {
+                setStatusFilter("notdone");
+                setOpenMenu("");
+              }}
+            >
+              not done
+            </button>
+            <div className="menu-divider" />
+            <div className="menu-section">tag</div>
+            <button
+              className={`menu-item ${tagFilterId === "" ? "active" : ""}`}
+              onClick={() => {
+                setTagFilterId("");
+                setOpenMenu("");
+              }}
+            >
+              all
+            </button>
+            {tags.map((t) => (
+              <button
+                key={t.id}
+                className={`menu-item ${tagFilterId === t.id ? "active" : ""}`}
+                onClick={() => {
+                  setTagFilterId(t.id);
+                  setOpenMenu("");
+                }}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* 📝 Todo List */}
-        <div data-cy="todo-item-wrapper">
-          {sortedTodos
-            .filter((item) =>
-              showStatusFilter === "ALL"
-                ? true
-                : showStatusFilter === "DONE"
-                ? item.isDone
-                : !item.isDone
-            )
-            .map((item, idx) => {
-              const { date, time } = formatDateTime(item.createdAt);
-              return (
-                <article
-                  key={item.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    marginBottom: "0.5rem",
-                    padding: "0.6rem 1rem",
-                    borderRadius: "12px",
-                    border: "1px solid #ccc",
-                  }}
+      <div className="controls-divider" />
+
+      {!showForm && allTodos.length > 0 && (
+        <div className="toolbar">
+          <button
+            data-cy="add-task-btn"
+            className="add-inline-btn"
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
+          >
+            + Add Task
+          </button>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="form-wrap" ref={formRef}>
+          <div className="task-card">
+            <input
+              data-cy="input-text"
+              ref={firstInputRef}
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+              placeholder="Task name  e.g. homework 1"
+              onKeyDown={(e) => e.key === "Enter" && handleSaveTask()}
+            />
+
+            <input
+              data-cy="input-date"
+              type="date"
+              className="date-input"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+
+            <TagDropdown
+              tags={tags}
+              selectedTagId={selectedTagId}
+              usedTagIds={usedTagIds}
+              onSelectTag={onSelectTag}
+              onAddTag={onAddTag}
+              onDeleteTag={onDeleteTag}
+            />
+
+            <div className="row">
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  setShowForm(false);
+                  resetForm();
+                }}
+              >
+                cancel
+              </button>
+              <button data-cy="submit" className="btn-primary" onClick={handleSaveTask}>
+                {mode === "ADD" ? "add task" : "update"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="list-wrap">
+        <ul className="todo-list">
+          {visibleTodos.map((t) => (
+            <li key={t.id} className="todo-row" data-cy="todo-item-wrapper">
+              <div className="left">
+                <input
+                  type="checkbox"
+                  checked={!!t.isDone}
+                  onChange={(e) => handleToggleDone(t.id, e.target.checked)}
+                />
+                <div className="info">
+                  <div className={`todo-title ${t.isDone ? "done" : ""}`} data-cy="todo-item">
+                    {t.todoText}
+                  </div>
+                  <div className="todo-meta">
+                    {t.tagId && (
+                      <span className="tag-pill-sm" data-cy="todo-tag">
+                        <span>🏷️</span>
+                        {getTagName(t.tagId)}
+                      </span>
+                    )}
+                    {t.dueDate && (
+                      <span className="due">
+                        <span>📅</span>
+                        {formatDate(t.dueDate)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="actions">
+                <button
+                  className="icon-btn edit"
+                  title="Edit"
+                  data-cy="todo-item-update"
+                  onClick={() => handleStartEdit(t)}
                 >
-                  <div>({idx + 1})</div>
-                  <div>📅 {date}</div>
-                  <div>⏰ {time}</div>
-                  <div>
-                    {item.tagId &&
-                      `🏷️${
-                        tags.find((t) => t.id === item.tagId)?.name || "No Tag"
-                      }`}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <input
-                      type="checkbox"
-                      checked={item.isDone}
-                      onChange={() => toggleIsDone(item.id, !item.isDone)}
-                      title="Mark complete"
-                    />
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        textDecoration: item.isDone ? "line-through" : "none",
-                        opacity: item.isDone ? 0.6 : 1,
-                      }}
-                    >
-                      📰 {item.todoText}
-                    </span>
-                  </div>
-                  <div>
-                    📌 Due:{" "}
-                    {item.dueDate ? formatDateTime(item.dueDate).date : "N/A"}
-                  </div>
-                  <div
-                    data-cy="edit-button"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => {
-                      setMode("EDIT");
-                      setCurTodoId(item.id);
-                      setInputText(item.todoText);
-                      setDueDate(item.dueDate || "");
-                      setSelectedTagId(item.tagId || "");
-                    }}
-                  >
-                    {curTodoId !== item.id ? "🖊️" : "✍🏻"}
-                  </div>
-                  {mode === "ADD" && (
-                    <div
-                      data-cy="delete-button"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      🗑️
-                    </div>
-                  )}
-                </article>
-              );
-            })}
-        </div>
-      </main>
-    </div>
+                  ✎
+                </button>
+                <button
+                  className="icon-btn del"
+                  title="Delete"
+                  data-cy="todo-item-delete"
+                  onClick={() => handleDeleteTodo(t.id)}
+                >
+                  🗑️
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        {!showForm && allTodos.length === 0 && (
+          <div className="right">
+            <div className="hero">
+              <img className="illus" src="/inbox-illus.png" alt="" />
+              <h2 className="hero-title">Add your first todo</h2>
+              <p className="hero-desc">Create a task to get started. You can always organize it later.</p>
+              <button className="add-btn" data-cy="add-task-btn" onClick={() => setShowForm(true)}>
+                + Add task
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
   );
-}
-
-export default App;
-
-const inputStyle: React.CSSProperties = {
-  padding: "0.4rem 0.8rem",
-  borderRadius: "10px",
-  border: "1px solid #ccc",
-  fontSize: "0.9rem",
-};
-
-const buttonStyle: React.CSSProperties = {
-  border: "none",
-  borderRadius: "20px",
-  padding: "0.5rem 1rem",
-  cursor: "pointer",
-  fontSize: "0.9rem",
-  backgroundColor: "#cddc39",
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  backgroundColor: "#f44336",
-};
-
-function formatDateTime(dateStr: string) {
-  if (!dayjs(dateStr).isValid()) return { date: "N/A", time: "N/A" };
-  const dt = dayjs(dateStr);
-  return {
-    date: dt.format("DD/MM/YYYY"),
-    time: dt.format("HH:mm"),
-  };
-}
-
-function compareDate(a: TodoItem, b: TodoItem) {
-  return dayjs(a.createdAt).isBefore(dayjs(b.createdAt)) ? -1 : 1;
-}
-
-function compareDueDate(a: TodoItem, b: TodoItem) {
-  if (!a.dueDate) return 1;
-  if (!b.dueDate) return -1;
-  return dayjs(a.dueDate).isBefore(dayjs(b.dueDate)) ? -1 : 1;
 }
