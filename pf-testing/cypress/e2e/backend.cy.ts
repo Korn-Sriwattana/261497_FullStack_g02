@@ -195,7 +195,6 @@ describe("Backend", () => {
       });
     });
   });
-
   // =====================
   // New: auth backend tests
   // =====================
@@ -225,6 +224,6 @@ describe("Backend", () => {
       }).then((res) => {
         expect(res.body.data.ownerId).to.be.a("string").and.not.be.empty;
       });
-    });
+    })
   });
 });
