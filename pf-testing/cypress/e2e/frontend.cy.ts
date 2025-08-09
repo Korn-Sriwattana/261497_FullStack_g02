@@ -271,7 +271,7 @@ describe("Frontend", () => {
     cy.contains(tagName).should("exist");
     cy.get("[data-cy='input-text']").type(text);
     openTagDropdown();
-    tag-item-']").contains(tagName).click();
+    cy.get("[data-cy='tag-item']").contains(tagName).click();
     cy.get("[data-cy='submit']").click();
     cy.contains(text).should("exist");
     openFilterMenu();
