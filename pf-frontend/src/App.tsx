@@ -306,7 +306,6 @@ export default function App() {
         method: "DELETE",
         credentials: "include",
       });
-      const json = await res.json();
       if (!res.ok) throw new Error();
       setTags((prev) => prev.filter((t) => t.id !== id));
       if (selectedTagId === id) setSelectedTagId("");
