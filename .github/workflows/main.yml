@@ -1,0 +1,32 @@
+# This is a basic workflow that is manually triggered
+name: Test Webhook
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI or API.
+on:
+  workflow_dispatch:
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "test"
+  test:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Send greeting
+        run: echo "Hello World"
+
+      - name: Discord notification (start)
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_USERNAME: github_server
+          DISCORD_AVATAR: https://picsum.photos/id/237/200/300
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Test message from {{ EVENT_PAYLOAD.repository.full_name }}"
+
+      - name: Invoke deployment hook
+        uses: distributhor/workflow-webhook@v3
+        with:
+          webhook_url: https://fs-webhook.iecmu.com/hooks/test
+          webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+          data: '{ "project_group": "${{ vars.PROJECT_GROUP}}", "discord_webhook": "${{ secrets.DISCORD_WEBHOOK}}", "webhook_secret": "${{ secrets.WEBHOOK_SECRET }}" }'
