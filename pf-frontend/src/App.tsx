@@ -304,9 +304,7 @@ export default function App() {
           padding: "0 12px",
         }}
       >
-        <h1 className="title" style={{ margin: 0 }}>
-          Todo
-        </h1>
+        <h1 className="title">Todo App</h1>
         <div>
           {authUser ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
