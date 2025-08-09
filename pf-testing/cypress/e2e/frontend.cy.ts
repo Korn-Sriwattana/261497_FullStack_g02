@@ -6,6 +6,7 @@ before(() => {
 beforeEach(() => {
   const url = Cypress.env("BACKEND_URL");
   cy.request("POST", `${url}/todo/all`);
+  cy.request("POST", `${url}/tags/unused`);
 });
 
 describe("Frontend", () => {
