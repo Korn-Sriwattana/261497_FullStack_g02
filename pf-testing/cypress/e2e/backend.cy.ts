@@ -195,7 +195,6 @@ describe("Backend", () => {
       });
     });
   });
-
   // =====================
   // New: auth backend tests (policy ใหม่)
   // =====================
@@ -225,7 +224,7 @@ describe("Backend", () => {
       }).then((res) => {
         expect(res.body.data.ownerId).to.be.a("string").and.not.be.empty;
       });
-    });
+    })
   });
 
   it("GET /todo: unauth sees only ownerId = NULL", () => {
