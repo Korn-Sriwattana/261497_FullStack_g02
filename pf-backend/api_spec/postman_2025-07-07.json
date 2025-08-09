@@ -7,96 +7,237 @@
   },
   "item": [
     {
-      "name": "todo",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/todo",
-          "host": ["http://localhost:3000"],
-          "path": ["todo"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "todo",
-      "request": {
-        "method": "PUT",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"todoText\": \"Finish\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+      "name": "AUTH",
+      "item": [
+        {
+          "name": "/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"p@ssw0rd\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/register",
+              "host": ["http://localhost:3000"],
+              "path": ["auth", "register"]
             }
-          }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "http://localhost:3000/todo",
-          "host": ["http://localhost:3000"],
-          "path": ["todo"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "todo",
-      "request": {
-        "method": "PATCH",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"id\": \"51df155d-1ba7-4261-a818-38254a1ba489\",\r\n    \"todoText\": \"dfsdf\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+        {
+          "name": "/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"p@ssw0rd\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/auth/login",
+              "host": ["http://localhost:3000"],
+              "path": ["auth", "login"]
             }
-          }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "http://localhost:3000/todo",
-          "host": ["http://localhost:3000"],
-          "path": ["todo"]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "todo",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"id\": \"51df155d-1ba7-4261-a818-38254a1ba489\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+        {
+          "name": "/auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/auth/logout",
+              "host": ["http://localhost:3000"],
+              "path": ["auth", "logout"]
             }
-          }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "http://localhost:3000/todo",
-          "host": ["http://localhost:3000"],
-          "path": ["todo"]
+        {
+          "name": "/auth/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/auth/me",
+              "host": ["http://localhost:3000"],
+              "path": ["auth", "me"]
+            }
+          },
+          "response": []
         }
-      },
-      "response": []
+      ]
     },
     {
-      "name": "todo/all",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/todo/all",
-          "host": ["http://localhost:3000"],
-          "path": ["todo", "all"]
+      "name": "TAGS",
+      "item": [
+        {
+          "name": "/tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/tags",
+              "host": ["http://localhost:3000"],
+              "path": ["tags"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/tags",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Work\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/tags",
+              "host": ["http://localhost:3000"],
+              "path": ["tags"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/tags/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/tags/{{tagId}}",
+              "host": ["http://localhost:3000"],
+              "path": ["tags", "{{tagId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/tags/unused (delete all unused)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/tags/unused",
+              "host": ["http://localhost:3000"],
+              "path": ["tags", "unused"]
+            }
+          },
+          "response": []
         }
-      },
-      "response": []
+      ]
+    },
+    {
+      "name": "TODO",
+      "item": [
+        {
+          "name": "/todo (list)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/todo?sortBy=dueDate&tagId={{tagId}}",
+              "host": ["http://localhost:3000"],
+              "path": ["todo"],
+              "query": [
+                { "key": "sortBy", "value": "dueDate" },
+                { "key": "tagId", "value": "{{tagId}}" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/todo (create)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"todoText\": \"Finish report\",\n  \"tagId\": \"{{tagId}}\",\n  \"dueDate\": \"2025-08-31T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/todo",
+              "host": ["http://localhost:3000"],
+              "path": ["todo"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/todo (update text/tag/dueDate)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{todoId}}\",\n  \"todoText\": \"Finish report v2\",\n  \"tagId\": \"{{tagId}}\",\n  \"dueDate\": \"2025-09-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/todo",
+              "host": ["http://localhost:3000"],
+              "path": ["todo"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/todo/status (toggle isDone)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{todoId}}\",\n  \"isDone\": true\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/todo/status",
+              "host": ["http://localhost:3000"],
+              "path": ["todo", "status"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/todo (by id)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{todoId}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:3000/todo",
+              "host": ["http://localhost:3000"],
+              "path": ["todo"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/todo/all (delete all todos) — for tests",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:3000/todo/all",
+              "host": ["http://localhost:3000"],
+              "path": ["todo", "all"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
+  ],
+  "variable": [
+    { "key": "tagId", "value": "00000000-0000-0000-0000-000000000000" },
+    { "key": "todoId", "value": "00000000-0000-0000-0000-000000000000" }
   ]
 }
