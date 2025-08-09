@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import TagDropdown from "./TagDropdown";
 import type { TagItem } from "./TagDropdown";
 
+/** ========= Types ========= */
 interface Todo {
   id: string;
   todoText: string;
@@ -11,7 +12,9 @@ interface Todo {
   dueDate?: string | null;
   createdAt?: string | null;
 }
+type AuthUser = { id: string; username: string } | null;
 
+/** ========= Utils ========= */
 function formatDate(d?: string | null) {
   if (!d) return "";
   const dt = new Date(d);
@@ -21,10 +24,19 @@ function formatDate(d?: string | null) {
 
 export default function App() {
   const API = "/api";
+  const FETCH_JSON = { "Content-Type": "application/json" };
 
+  // ===== Auth =====
+  const [authUser, setAuthUser] = useState<AuthUser>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authUsername, setAuthUsername] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+
+  // ===== Todos & Tags =====
   const [allTodos, setAllTodos] = useState<Todo[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
 
+  // ===== Form / UI =====
   const [showForm, setShowForm] = useState(false);
   const [mode, setMode] = useState<"ADD" | "EDIT">("ADD");
   const [editingId, setEditingId] = useState("");
@@ -33,33 +45,99 @@ export default function App() {
   const [dueDate, setDueDate] = useState("");
   const [selectedTagId, setSelectedTagId] = useState<string>("");
 
+  // ===== Filters / Sort =====
   const [sortBy, setSortBy] = useState<"createdAt" | "dueDate">("createdAt");
   const [statusFilter, setStatusFilter] = useState<"all" | "done" | "notdone">("all");
   const [tagFilterId, setTagFilterId] = useState<string>("");
 
   const [openMenu, setOpenMenu] = useState<"" | "sort" | "filter">("");
 
+  // ===== Refs =====
   const formRef = useRef<HTMLDivElement | null>(null);
   const firstInputRef = useRef<HTMLInputElement | null>(null);
-
   const fetchedOnce = useRef(false);
   const controlsRef = useRef<HTMLDivElement | null>(null);
 
+  /** ===== Auth API (fetch + credentials) ===== */
+  async function fetchMe() {
+    try {
+      const res = await fetch(`${API}/auth/me`, { credentials: "include" });
+      if (!res.ok) {
+        setAuthUser(null);
+        return;
+      }
+      const json = await res.json();
+      setAuthUser(json.user ?? null);
+    } catch {
+      setAuthUser(null);
+    }
+  }
+  async function doRegister() {
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: "POST",
+        headers: FETCH_JSON,
+        credentials: "include",
+        body: JSON.stringify({ username: authUsername.trim(), password: authPassword }),
+      });
+      if (!res.ok) throw new Error("Register failed");
+      alert("Registered! Now login.");
+    } catch (e: any) {
+      alert(e?.message || "Register failed");
+    }
+  }
+  async function doLogin() {
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: FETCH_JSON,
+        credentials: "include",
+        body: JSON.stringify({ username: authUsername.trim(), password: authPassword }),
+      });
+      if (!res.ok) throw new Error("Login failed");
+      await fetchMe();
+      setAuthOpen(false);
+      setAuthPassword("");
+      // โหลดข้อมูลหลังล็อกอิน (ถ้า backend ปกป้องด้วย auth)
+      await fetchAll();
+    } catch (e: any) {
+      alert(e?.message || "Login failed");
+    }
+  }
+  async function doLogout() {
+    try {
+      await fetch(`${API}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+      setAuthUser(null);
+      await fetchAll(); // เคลียร์ข้อมูล/รีโหลดตามความเหมาะสม
+    } catch {
+      // ignore
+    }
+  }
+
+  /** ===== App data fetch ===== */
   const fetchAll = async () => {
-    const [todoRes, tagRes] = await Promise.all([
-      fetch(`${API}/todo`, { cache: "no-store" }),
-      fetch(`${API}/tags`, { cache: "no-store" }),
-    ]);
-    if (!todoRes.ok || !tagRes.ok) throw new Error("fetch failed");
-    const [todosData, tagsData] = await Promise.all([todoRes.json(), tagRes.json()]);
-    setAllTodos(todosData);
-    setTags(tagsData);
+    try {
+      const [todoRes, tagRes] = await Promise.all([
+        fetch(`${API}/todo`, { cache: "no-store", credentials: "include" }),
+        fetch(`${API}/tags`, { cache: "no-store", credentials: "include" }),
+      ]);
+      if (!todoRes.ok || !tagRes.ok) throw new Error("fetch failed");
+      const [todosData, tagsData] = await Promise.all([todoRes.json(), tagRes.json()]);
+      setAllTodos(todosData);
+      setTags(tagsData);
+    } catch {
+      // เงียบไว้ก่อน
+    }
   };
 
   useEffect(() => {
     if (fetchedOnce.current) return;
     fetchedOnce.current = true;
-    fetchAll().catch(() => {});
+    // ดึง me ก่อน เพื่อให้ cookie พร้อม แล้วค่อยโหลด todo/tags
+    fetchMe().finally(fetchAll);
   }, []);
 
   useEffect(() => {
@@ -82,6 +160,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [showForm]);
 
+  /** ===== Derived ===== */
   const usedTagIds = useMemo(() => {
     const ids = allTodos.map((t) => t.tagId).filter(Boolean) as string[];
     return Array.from(new Set(ids));
@@ -110,6 +189,7 @@ export default function App() {
 
   const getTagName = (id?: string | null) => (id ? tags.find((x) => x.id === id)?.name ?? "" : "");
 
+  /** ===== Actions ===== */
   const resetForm = () => {
     setMode("ADD");
     setEditingId("");
@@ -120,7 +200,7 @@ export default function App() {
 
   const refreshTodos = async () => {
     try {
-      const res = await fetch(`${API}/todo`, { cache: "no-store" });
+      const res = await fetch(`${API}/todo`, { cache: "no-store", credentials: "include" });
       if (!res.ok) throw new Error(String(res.status));
       const data: Todo[] = await res.json();
       setAllTodos(data);
@@ -139,7 +219,8 @@ export default function App() {
     try {
       const res = await fetch(`${API}/todo`, {
         method: mode === "ADD" ? "PUT" : "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: FETCH_JSON,
+        credentials: "include",
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error();
@@ -162,7 +243,8 @@ export default function App() {
     try {
       const res = await fetch(`${API}/todo/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: FETCH_JSON,
+        credentials: "include",
         body: JSON.stringify({ id, isDone }),
       });
       if (!res.ok) throw new Error();
@@ -174,7 +256,8 @@ export default function App() {
     try {
       await fetch(`${API}/todo`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: FETCH_JSON,
+        credentials: "include",
         body: JSON.stringify({ id }),
       });
       refreshTodos();
@@ -186,7 +269,8 @@ export default function App() {
     try {
       const res = await fetch(`${API}/tags`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: FETCH_JSON,
+        credentials: "include",
         body: JSON.stringify({ name }),
       });
       const json = await res.json();
@@ -197,7 +281,7 @@ export default function App() {
   };
   const onDeleteTag = async (id: string) => {
     try {
-      const res = await fetch(`${API}/tags/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API}/tags/${id}`, { method: "DELETE", credentials: "include" });
       const json = await res.json();
       if (!res.ok) throw new Error();
       setTags((prev) => prev.filter((t) => t.id !== id));
@@ -205,11 +289,93 @@ export default function App() {
     } catch {}
   };
 
+  /** ===== Render ===== */
   return (
     <main>
-      <div>
-        <h1 className="title">Todo</h1>
+      {/* Header with Auth */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+          maxWidth: 960,
+          margin: "12px auto",
+          padding: "0 12px",
+        }}
+      >
+        <h1 className="title" style={{ margin: 0 }}>
+          Todo
+        </h1>
+        <div>
+          {authUser ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span>Hi, {authUser.username}</span>
+              <button className="btn-primary" onClick={doLogout}>
+                🚪 Logout
+              </button>
+            </div>
+          ) : (
+            <button className="btn-primary" onClick={() => setAuthOpen(true)}>
+              🔐 Login / Register
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Auth Modal */}
+      {authOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 16,
+              padding: 16,
+              width: 360,
+              boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>🔑 Authentication</h3>
+            <input
+              placeholder="Username"
+              value={authUsername}
+              onChange={(e) => setAuthUsername(e.target.value)}
+              className="input"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={authPassword}
+              onChange={(e) => setAuthPassword(e.target.value)}
+              className="input"
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={doRegister} className="btn-primary">
+                📝 Register
+              </button>
+              <button onClick={doLogin} className="btn-primary">
+                🔓 Login
+              </button>
+              <button onClick={() => setAuthOpen(false)} className="btn-cancel">
+                ✖ Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* controls */}
       <div className="controls" ref={controlsRef}>

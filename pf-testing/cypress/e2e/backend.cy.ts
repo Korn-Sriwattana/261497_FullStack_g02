@@ -1,6 +1,6 @@
 before(() => {
   const url = Cypress.env("BACKEND_URL");
-  cy.request("POST", `${url}/todo/all`);
+  cy.request({ method: "POST", url: `${url}/todo/all` });
 });
 
 beforeEach(() => {
@@ -15,31 +15,34 @@ describe("Backend", () => {
   });
 
   it("checks CORS header", () => {
-    const url = Cypress.env("BACKEND_URL");
-    cy.request({
-      method: "GET",
-      url: `${url}/todo`,
-      headers: { Origin: "http://localhost:5173" }, // Origin เดียวกับ frontend
-    }).then((res) => {
-      expect(res.status).to.eq(200);
-      expect(res.headers).to.have.property("access-control-allow-origin");
-      expect(res.headers["access-control-allow-origin"])
-        .to.be.oneOf(["http://localhost:5173", "*"]);
+  const url = Cypress.env("BACKEND_URL");
+  cy.request({
+    method: "GET",
+    url: `${url}/todo`,
+    headers: { Origin: process.env.FRONTEND_URL }, // Origin เดียวกับ frontend
+  }).then((res) => {
+    expect(res.status).to.eq(200);
+    expect(res.headers).to.have.property("access-control-allow-origin");
+    expect(res.headers["access-control-allow-origin"])
+      .to.be.oneOf([process.env.FRONTEND_URL, "*"]);
+  });
+});
     });
   });
 
   it("checks get response", () => {
     const url = Cypress.env("BACKEND_URL");
-    cy.request("GET", `${url}/todo`).then((res) => {
+    cy.request({ method: "GET", url: `${url}/todo` }).then((res) => {
       expect(res.body).to.be.a("array");
     });
   });
 
-  it("creates todo", () => {
+  it("creates todo (no owner when not logged in)", () => {
     const url = Cypress.env("BACKEND_URL");
     cy.request("PUT", `${url}/todo`, { todoText: "New Todo" }).then((res) => {
       expect(res.body).to.have.all.keys("msg", "data");
       expect(res.body.data).to.include.all.keys("id", "todoText");
+      expect(res.body.data.ownerId).to.eq(null);
     });
   });
 
@@ -66,8 +69,8 @@ describe("Backend", () => {
         cy.request("GET", `${url}/todo`).then(function (res) {
           const currentId = this.currentId;
           const todos = res.body;
-          const todo = todos.find((el: any) => el.id === currentId);
-          expect(todo.todoText).to.equal("Updated Text");
+          const t = todos.find((el: any) => el.id === currentId);
+          expect(t.todoText).to.equal("Updated Text");
         });
       });
     });
@@ -241,5 +244,36 @@ describe("Backend", () => {
         expect(dueDates).to.deep.equal(sorted);
       }
     );
+    
+  // =====================
+  // New: auth backend tests
+  // =====================
+  it("registers, logs in and creates owned todo", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const username = `user_${Date.now()}`;
+    const password = "p@ssw0rd";
+
+    // register
+    cy.request("POST", `${url}/auth/register`, { username, password })
+      .its("status")
+      .should("eq", 200);
+
+    // login with cookie jar
+    cy.request({
+      method: "POST",
+      url: `${url}/auth/login`,
+      body: { username, password },
+    }).then((loginRes) => {
+      expect(loginRes.body.user.username).to.eq(username);
+
+      // with cookies attached by cy.request automatically
+      cy.request({
+        method: "PUT",
+        url: `${url}/todo`,
+        body: { todoText: "Owned Todo" },
+      }).then((res) => {
+        expect(res.body.data.ownerId).to.be.a("string").and.not.be.empty;
+      });
+    })
   });
 });

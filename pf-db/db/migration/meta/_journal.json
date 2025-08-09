@@ -29,6 +29,20 @@
       "when": 1754328549143,
       "tag": "0003_confused_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1754675667375,
+      "tag": "0004_yummy_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1754718906235,
+      "tag": "0005_eminent_shard",
+      "breakpoints": true
     }
   ]
 }
