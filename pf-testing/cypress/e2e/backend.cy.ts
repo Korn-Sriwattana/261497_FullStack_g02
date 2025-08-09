@@ -75,7 +75,7 @@ describe("Backend", () => {
         body: { id: todo.id, todoText: "Updated Text" },
       }).then(() => {
         cy.request({ method: "GET", url: `${url}/todo` }).then(function (res) {
-          const currentId = this.currentId;
+          const currentId = this.currentId as string;
           const todos = res.body;
           const t = todos.find((el: any) => el.id === currentId);
           expect(t.todoText).to.equal("Updated Text");
@@ -197,7 +197,7 @@ describe("Backend", () => {
   });
 
   // =====================
-  // New: auth backend tests
+  // New: auth backend tests (policy ใหม่)
   // =====================
   it("registers, logs in and creates owned todo", () => {
     const url = Cypress.env("BACKEND_URL");
@@ -225,6 +225,165 @@ describe("Backend", () => {
       }).then((res) => {
         expect(res.body.data.ownerId).to.be.a("string").and.not.be.empty;
       });
+    });
+  });
+
+  it("GET /todo: unauth sees only ownerId = NULL", () => {
+    const url = Cypress.env("BACKEND_URL");
+
+    // unauth create -> ownerId = NULL
+    cy.request("PUT", `${url}/todo`, { todoText: "Public A" }).then(() => {
+      cy.request("GET", `${url}/todo`).then((res) => {
+        expect(res.status).to.eq(200);
+        expect(res.body).to.be.an("array").and.have.length(1);
+        expect(res.body[0].ownerId).to.eq(null);
+      });
+    });
+  });
+
+  it("GET /todo: logged-in user sees ONLY their own todos", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const u1 = `alice_${Date.now()}`;
+    const u2 = `bob_${Date.now() + 1}`;
+    const password = "p@ssw0rd";
+
+    // user A
+    cy.request("POST", `${url}/auth/register`, { username: u1, password });
+    cy.request("POST", `${url}/auth/login`, { username: u1, password });
+    cy.request("PUT", `${url}/todo`, { todoText: "A1" });
+    cy.request("PUT", `${url}/todo`, { todoText: "A2" });
+    cy.request("GET", `${url}/todo`).then((res) => {
+      const texts = res.body.map((t: any) => t.todoText);
+      expect(texts).to.include.members(["A1", "A2"]);
+      expect(texts).to.not.include("B1");
+    });
+
+    // switch to user B
+    cy.request("POST", `${url}/auth/register`, { username: u2, password });
+    cy.request("POST", `${url}/auth/login`, { username: u2, password });
+    cy.request("PUT", `${url}/todo`, { todoText: "B1" });
+    cy.request("GET", `${url}/todo`).then((res) => {
+      const texts = res.body.map((t: any) => t.todoText);
+      expect(texts).to.include("B1");
+      expect(texts).to.not.include.members(["A1", "A2"]);
+    });
+  });
+
+  it("permission: unauth cannot modify owned todo", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const username = `owner_${Date.now()}`;
+    const password = "p@ssw0rd";
+
+    cy.request("POST", `${url}/auth/register`, { username, password });
+    cy.request("POST", `${url}/auth/login`, { username, password });
+
+    // create owned todo
+    cy.request("PUT", `${url}/todo`, { todoText: "OwnedOnly" }).then((res) => {
+      const todoId = res.body.data.id;
+
+      // logout -> now unauth
+      cy.request("POST", `${url}/auth/logout`);
+
+      // try update without auth -> should fail (Permission denied)
+      cy.request({
+        method: "PATCH",
+        url: `${url}/todo`,
+        failOnStatusCode: false,
+        body: { id: todoId, todoText: "Hacked" },
+      }).then((res) => {
+        expect(res.status).to.eq(500);
+        expect(res.body.message || "").to.match(/permission denied/i);
+      });
+
+      // try delete without auth -> should fail
+      cy.request({
+        method: "DELETE",
+        url: `${url}/todo`,
+        failOnStatusCode: false,
+        body: { id: todoId },
+      }).then((res) => {
+        expect(res.status).to.eq(500);
+        expect(res.body.message || "").to.match(/permission denied/i);
+      });
+    });
+  });
+
+  it("permission: user B cannot modify user A's owned todo", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const a = `userA_${Date.now()}`;
+    const b = `userB_${Date.now() + 1}`;
+    const password = "p@ssw0rd";
+
+    // user A creates a todo
+    cy.request("POST", `${url}/auth/register`, { username: a, password });
+    cy.request("POST", `${url}/auth/login`, { username: a, password });
+    cy.request("PUT", `${url}/todo`, { todoText: "A_only" }).then((res) => {
+      const todoId = res.body.data.id;
+
+      // switch to user B
+      cy.request("POST", `${url}/auth/register`, { username: b, password });
+      cy.request("POST", `${url}/auth/login`, { username: b, password });
+
+      // B tries to update A's todo -> should fail
+      cy.request({
+        method: "PATCH",
+        url: `${url}/todo`,
+        failOnStatusCode: false,
+        body: { id: todoId, todoText: "B_edit" },
+      }).then((res) => {
+        expect(res.status).to.eq(500);
+        expect(res.body.message || "").to.match(/permission denied/i);
+      });
+
+      // B tries to delete A's todo -> should fail
+      cy.request({
+        method: "DELETE",
+        url: `${url}/todo`,
+        failOnStatusCode: false,
+        body: { id: todoId },
+      }).then((res) => {
+        expect(res.status).to.eq(500);
+        expect(res.body.message || "").to.match(/permission denied/i);
+      });
+    });
+  });
+
+  it("GET /todo respects tag filter under visibility rules", () => {
+    const url = Cypress.env("BACKEND_URL");
+    const username = `user_${Date.now()}`;
+    const password = "p@ssw0rd";
+    const tagName = `MyTag_${Date.now()}`;
+
+    // create a tag
+    cy.request("POST", `${url}/tags`, { name: tagName }).then((res) => {
+      const tagId = res.body.data.id;
+
+      // unauth create public todo with tag -> visible to unauth
+      cy.request("PUT", `${url}/todo`, { todoText: "PublicTag", tagId });
+
+      // register+login -> create owned todo with same tag (not visible to unauth)
+      cy.request("POST", `${url}/auth/register`, { username, password });
+      cy.request("POST", `${url}/auth/login`, { username, password });
+      cy.request("PUT", `${url}/todo`, { todoText: "OwnedTag", tagId });
+
+      // as logged-in: filter by tagId -> see only "OwnedTag"
+      cy.request({ method: "GET", url: `${url}/todo`, qs: { tagId } }).then(
+        (res1) => {
+          const names1 = res1.body.map((t: any) => t.todoText);
+          expect(names1).to.include("OwnedTag");
+          expect(names1).to.not.include("PublicTag");
+        }
+      );
+
+      // logout: unauth -> filter by tagId -> see only "PublicTag"
+      cy.request("POST", `${url}/auth/logout`);
+      cy.request({ method: "GET", url: `${url}/todo`, qs: { tagId } }).then(
+        (res2) => {
+          const names2 = res2.body.map((t: any) => t.todoText);
+          expect(names2).to.include("PublicTag");
+          expect(names2).to.not.include("OwnedTag");
+        }
+      );
     });
   });
 });

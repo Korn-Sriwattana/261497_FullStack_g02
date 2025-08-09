@@ -3,7 +3,7 @@ import { dbClient } from "@db/client.js";
 import { todoTable, tagTable, userTable } from "@db/schema.js";
 import cors from "cors";
 import Debug from "debug";
-import { eq, asc, desc } from "drizzle-orm";
+import { eq, asc, desc, and, isNull, or } from "drizzle-orm";
 import type { ErrorRequestHandler } from "express";
 import express from "express";
 import helmet from "helmet";
@@ -23,7 +23,6 @@ function randomId(bytes = 32) {
   return crypto.randomBytes(bytes).toString("hex");
 }
 function hashPassword(password: string, salt: string) {
-  // ใช้ pbkdf2 ในตัว Node
   const hash = crypto
     .pbkdf2Sync(password, salt, 120000, 32, "sha256")
     .toString("hex");
@@ -34,11 +33,9 @@ function createPassword(password: string) {
   const passwordHash = hashPassword(password, salt);
   return { passwordHash, passwordSalt: salt };
 }
-
 function verifyPassword(password: string, salt: string, goodHash: string) {
-  return hashPassword(password, salt) === goodHash; // ทั้งคู่เป็น hex string เหมือนกัน
+  return hashPassword(password, salt) === goodHash;
 }
-
 function parseCookies(cookieHeader: string | undefined) {
   const out: Record<string, string> = {};
   if (!cookieHeader) return out;
@@ -51,7 +48,6 @@ function parseCookies(cookieHeader: string | undefined) {
   return out;
 }
 function setSessionCookie(res: express.Response, sid: string) {
-  // SameSite=Lax เพื่อให้ทำงานกับ nginx proxy ได้สะดวก
   res.setHeader(
     "Set-Cookie",
     `sid=${sid}; HttpOnly; Path=/; Max-Age=${Math.floor(
@@ -74,14 +70,13 @@ app.use(morgan("dev", { immediate: false }));
 app.use(helmet());
 app.use(
   cors({
-    origin: false, // Same-origin (ผ่าน NGINX) => cookie ทำงานได้ โดยไม่ต้องตั้ง CORS
+    origin: false, // Same-origin
   })
 );
-// Extracts the entire body portion of an incoming request stream and exposes it on req.body.
 app.use(express.json());
 
 // ======================
-// Auth middleware: เติม req.user ถ้า sid ถูกต้อง
+// Auth middleware
 // ======================
 app.use(async (req, _res, next) => {
   try {
@@ -97,7 +92,6 @@ app.use(async (req, _res, next) => {
       return next();
     }
 
-    // refresh session TTL เบาๆ
     sess.expiresAt = Date.now() + SESSION_TTL_MS;
     (req as any).authUserId = sess.userId;
     next();
@@ -105,6 +99,29 @@ app.use(async (req, _res, next) => {
     next(e);
   }
 });
+
+// ======================
+// Helper: Check ownership
+// ======================
+async function getOwnedTodoOrThrow(id: string, authUserId?: string) {
+  const [todo] = await dbClient
+    .select({
+      id: todoTable.id,
+      ownerId: todoTable.ownerId,
+    })
+    .from(todoTable)
+    .where(eq(todoTable.id, id));
+
+  if (!todo) throw new Error("Invalid id");
+
+  if (!authUserId) {
+    if (todo.ownerId !== null) throw new Error("Permission denied");
+  } else {
+    if (todo.ownerId !== authUserId) throw new Error("Permission denied");
+  }
+
+  return todo;
+}
 
 // ======================
 // AUTH ROUTES
@@ -255,31 +272,29 @@ app.post("/tags", async (req, res, next) => {
 // ======================
 // TODO ROUTES
 // ======================
-
-// ดึง todo ทั้งหมด หรือ filter ตาม tagId ถ้ามี (เหมือนเดิม)
 app.get("/todo", async (req, res, next) => {
   try {
     const sortBy = req.query.sortBy as string | undefined;
     const tagId = req.query.tagId as string | undefined;
 
-    const qb = dbClient.select().from(todoTable);
+    const authUserId = (req as any).authUserId as string | undefined;
+    const ownerFilter = authUserId
+      ? eq(todoTable.ownerId, authUserId)
+      : isNull(todoTable.ownerId);
 
-    let rows;
-    if (tagId) {
-      rows = await qb
-        .where(eq(todoTable.tagId, tagId))
-        .orderBy(
-          sortBy === "dueDate"
-            ? asc(todoTable.dueDate)
-            : desc(todoTable.createdAt)
-        );
-    } else {
-      rows = await qb.orderBy(
+    const whereExpr = tagId
+      ? and(ownerFilter, eq(todoTable.tagId, tagId))
+      : ownerFilter;
+
+    const rows = await dbClient
+      .select()
+      .from(todoTable)
+      .where(whereExpr)
+      .orderBy(
         sortBy === "dueDate"
           ? asc(todoTable.dueDate)
           : desc(todoTable.createdAt)
       );
-    }
 
     res.json(rows);
   } catch (err) {
@@ -287,7 +302,6 @@ app.get("/todo", async (req, res, next) => {
   }
 });
 
-// Insert (ถ้า login จะใส่ ownerId ให้)
 app.put("/todo", async (req, res, next) => {
   try {
     const todoText = req.body.todoText ?? "";
@@ -305,13 +319,7 @@ app.put("/todo", async (req, res, next) => {
         ownerId: authUserId || null,
         dueDate: dueDate ? new Date(dueDate) : null,
       })
-      .returning({
-        id: todoTable.id,
-        todoText: todoTable.todoText,
-        tagId: todoTable.tagId,
-        dueDate: todoTable.dueDate,
-        ownerId: todoTable.ownerId,
-      });
+      .returning();
 
     res.json({ msg: `Insert successfully`, data: result[0] });
   } catch (err) {
@@ -319,23 +327,17 @@ app.put("/todo", async (req, res, next) => {
   }
 });
 
-// Update
 app.patch("/todo", async (req, res, next) => {
   try {
     const id = req.body.id ?? "";
     const todoText = req.body.todoText ?? "";
     const dueDate = req.body.dueDate ?? null;
     const tagId = req.body.tagId ?? null;
-
     if (!todoText || !id) throw new Error("Empty todoText or id");
 
-    // ตรวจสอบว่ามี todo นี้อยู่หรือไม่
-    const results = await dbClient.query.todoTable.findMany({
-      where: eq(todoTable.id, id),
-    });
-    if (results.length === 0) throw new Error("Invalid id");
+    const authUserId = (req as any).authUserId as string | undefined;
+    await getOwnedTodoOrThrow(id, authUserId);
 
-    // อัปเดตข้อมูล
     const result = await dbClient
       .update(todoTable)
       .set({
@@ -344,12 +346,7 @@ app.patch("/todo", async (req, res, next) => {
         tagId,
       })
       .where(eq(todoTable.id, id))
-      .returning({
-        id: todoTable.id,
-        todoText: todoTable.todoText,
-        dueDate: todoTable.dueDate,
-        tagId: todoTable.tagId,
-      });
+      .returning();
 
     res.json({ msg: `Update successfully`, data: result[0] });
   } catch (err) {
@@ -357,33 +354,22 @@ app.patch("/todo", async (req, res, next) => {
   }
 });
 
-// Toggle status (DONE/UNDONE)
 app.patch("/todo/status", async (req, res, next) => {
   try {
     const id = req.body.id ?? "";
     const isDone = req.body.isDone;
-
     if (!id || typeof isDone !== "boolean") {
       throw new Error("Missing id or invalid isDone");
     }
 
-    const existing = await dbClient.query.todoTable.findMany({
-      where: eq(todoTable.id, id),
-    });
-    if (existing.length === 0) throw new Error("Invalid id");
+    const authUserId = (req as any).authUserId as string | undefined;
+    await getOwnedTodoOrThrow(id, authUserId);
 
     const [updated] = await dbClient
       .update(todoTable)
       .set({ isDone })
       .where(eq(todoTable.id, id))
-      .returning({
-        id: todoTable.id,
-        todoText: todoTable.todoText,
-        isDone: todoTable.isDone,
-        tagId: todoTable.tagId,
-        dueDate: todoTable.dueDate,
-        ownerId: todoTable.ownerId,
-      });
+      .returning();
 
     res.json({ msg: "Status updated", data: updated });
   } catch (err) {
@@ -391,17 +377,13 @@ app.patch("/todo/status", async (req, res, next) => {
   }
 });
 
-// Delete
 app.delete("/todo", async (req, res, next) => {
   try {
     const id = req.body.id ?? "";
     if (!id) throw new Error("Empty id");
 
-    // Check for existence
-    const results = await dbClient.query.todoTable.findMany({
-      where: eq(todoTable.id, id),
-    });
-    if (results.length === 0) throw new Error("Invalid id");
+    const authUserId = (req as any).authUserId as string | undefined;
+    await getOwnedTodoOrThrow(id, authUserId);
 
     await dbClient.delete(todoTable).where(eq(todoTable.id, id));
     res.json({ msg: `Delete successfully`, data: { id } });
