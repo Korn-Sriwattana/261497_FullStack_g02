@@ -316,39 +316,22 @@ export default function App() {
   /** ===== Render ===== */
   return (
     <main>
-      {/* Header with Auth */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "center",
-          maxWidth: 960,
-          margin: "12px auto",
-          padding: "0 12px",
-        }}
-      >
-        <h1 className="title">Todo App</h1>
+      
+        {/* Header with Auth */}
+
+      <div className="header">
+        <h1 className="title">Todo List</h1>
+
         <div>
           {authUser ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span data-cy="auth-greeting">Hi, {authUser.username}</span>
-              <button
-                className="btn-primary"
-                onClick={doLogout}
-                data-cy="auth-logout"
-                title="Logout"
-              >
+              <span>Hi, {authUser.username}</span>
+              <button className="btn-primary" onClick={doLogout}>
                 🚪 Logout
               </button>
             </div>
           ) : (
-            <button
-              className="btn-primary"
-              onClick={() => setAuthOpen(true)}
-              data-cy="auth-open"
-              title="Login / Register"
-            >
+            <button className="btn-primary" onClick={() => setAuthOpen(true)}>
               🔐 Login / Register
             </button>
           )}

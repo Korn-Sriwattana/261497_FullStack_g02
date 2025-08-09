@@ -176,14 +176,15 @@ main { min-height: 90vh; display: flex; flex-direction: column; }
   width: 100%;
   box-sizing: border-box;
   padding: 10px;
-  height: 40px;
+  height: px;
   border: 1px solid #cfcfcf;
   margin: 8px 0;
-  font-size: 14px;
+  font-size: 8px;
   background: #fff !important;
   color: #333;
   border-radius: 0;
   cursor: pointer;
+  line-height: 1.4;   
 }
 .input-like:focus { border-color: #2f6df6; }
 .input-like.placeholder { color: #8a8f96; font-size: 15px; }
@@ -198,11 +199,17 @@ main { min-height: 90vh; display: flex; flex-direction: column; }
   background: #fff;
   border: 1px solid #cfcfcf;
   box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  z-index: 30;
+  z-index: 100;
   padding: 8px;
 }
 .tagdd-addrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.tagdd-input { flex: 1; height: 40px; padding: 0 10px; border: 1px solid #cfcfcf; font-size: 14px; box-sizing: border-box; background: #fff; border-radius: 0; }
+.tagdd-input {
+   flex: 1; height: 40px; padding: 0 10px;
+    border: 1px solid #cfcfcf; font-size: 14px;
+    box-sizing: border-box; background: #fff; 
+    border-radius: 0; 
+    
+  }
 .tagdd-addbtn {
   height: 40px;
   padding: 0 16px;
@@ -352,3 +359,9 @@ button:active {
   align-items: flex-start;
   margin-top: 20px; 
 }
+
+
+.input-like {
+   color: #333 !important;
+   background: #fff !important; 
+  }
