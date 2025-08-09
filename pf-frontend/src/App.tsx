@@ -325,13 +325,23 @@ export default function App() {
         <div>
           {authUser ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span>Hi, {authUser.username}</span>
-              <button className="btn-primary" onClick={doLogout}>
+              <span data-cy="auth-greeting">Hi, {authUser.username}</span>
+              <button
+                className="btn-primary"
+                onClick={doLogout}
+                data-cy="auth-logout"
+                title="Logout"
+              >
                 🚪 Logout
               </button>
             </div>
           ) : (
-            <button className="btn-primary" onClick={() => setAuthOpen(true)}>
+             <button
+              className="btn-primary"
+              onClick={() => setAuthOpen(true)}
+              data-cy="auth-open"
+              title="Login / Register"
+            >
               🔐 Login / Register
             </button>
           )}
